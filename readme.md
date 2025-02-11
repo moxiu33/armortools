@@ -1,6 +1,6 @@
 ![](https://armorpaint.org/img/git_root.jpg)
 
-armortools/armourpaint binaries
+armortools/armorrpaint binaries
 ==============
 ### ArmourPaint bianry (1.0-alpha-11_02_2025):
 > it comes as .7z package so make sure to have tool like 7-zip or peazip to extract it
