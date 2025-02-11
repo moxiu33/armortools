@@ -2,6 +2,9 @@
 
 armortools
 ==============
+### ArmourPaint bianry (1.0-alpha):
+
+[/tag/1.0-a](https://github.com/moxiu33/armortools/releases/tag/1.0-a)
 
 3D content creation tools.
 
