@@ -350,8 +350,7 @@ void kinc_g5_command_list_end(kinc_g5_command_list_t *list) {
 	assert(!err);
 }
 
-void kinc_g5_command_list_clear(kinc_g5_command_list_t *list, struct kinc_g5_render_target *renderTarget, unsigned flags, unsigned color, float depth,
-                                int stencil) {
+void kinc_g5_command_list_clear(kinc_g5_command_list_t *list, struct kinc_g5_render_target *renderTarget, unsigned flags, unsigned color, float depth) {
 	VkClearRect clearRect = {0};
 	clearRect.rect.offset.x = 0;
 	clearRect.rect.offset.y = 0;
@@ -373,10 +372,10 @@ void kinc_g5_command_list_clear(kinc_g5_command_list_t *list, struct kinc_g5_ren
 		attachments[count].clearValue.color = clearColor;
 		count++;
 	}
-	if (((flags & KINC_G5_CLEAR_DEPTH) || (flags & KINC_G5_CLEAR_STENCIL)) && renderTarget->impl.depthBufferBits > 0) {
-		attachments[count].aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT; // | VK_IMAGE_ASPECT_STENCIL_BIT;
+	if ((flags & KINC_G5_CLEAR_DEPTH) && renderTarget->impl.depthBufferBits > 0) {
+		attachments[count].aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 		attachments[count].clearValue.depthStencil.depth = depth;
-		attachments[count].clearValue.depthStencil.stencil = stencil;
+		attachments[count].clearValue.depthStencil.stencil = 0;
 		count++;
 	}
 	vkCmdClearAttachments(list->impl._buffer, count, attachments, 1, &clearRect);
@@ -392,18 +391,6 @@ void kinc_g5_command_list_draw_indexed_vertices(kinc_g5_command_list_t *list) {
 
 void kinc_g5_command_list_draw_indexed_vertices_from_to(kinc_g5_command_list_t *list, int start, int count) {
 	vkCmdDrawIndexed(list->impl._buffer, count, 1, start, 0, 0);
-}
-
-void kinc_g5_command_list_draw_indexed_vertices_from_to_from(kinc_g5_command_list_t *list, int start, int count, int vertex_offset) {
-	vkCmdDrawIndexed(list->impl._buffer, count, 1, start, vertex_offset, 0);
-}
-
-void kinc_g5_command_list_draw_indexed_vertices_instanced(kinc_g5_command_list_t *list, int instanceCount) {
-	kinc_g5_command_list_draw_indexed_vertices_instanced_from_to(list, instanceCount, 0, list->impl._indexCount);
-}
-
-void kinc_g5_command_list_draw_indexed_vertices_instanced_from_to(kinc_g5_command_list_t *list, int instanceCount, int start, int count) {
-	vkCmdDrawIndexed(list->impl._buffer, count, instanceCount, start, 0, 0);
 }
 
 void kinc_g5_command_list_viewport(kinc_g5_command_list_t *list, int x, int y, int width, int height) {
@@ -457,32 +444,17 @@ void kinc_g5_command_list_set_pipeline(kinc_g5_command_list_t *list, struct kinc
 	}
 }
 
-void kinc_g5_command_list_set_blend_constant(kinc_g5_command_list_t *list, float r, float g, float b, float a) {
-	const float blendConstants[4] = {r, g, b, a};
-	vkCmdSetBlendConstants(list->impl._buffer, blendConstants);
-}
-
-void kinc_g5_command_list_set_vertex_buffers(kinc_g5_command_list_t *list, struct kinc_g5_vertex_buffer **vertexBuffers, int *offsets_, int count) {
-// this seems to be a no-op function?
-// kinc_g5_internal_vertex_buffer_set(vertexBuffers[0], 0);
-#ifdef KINC_WINDOWS
-	VkBuffer *buffers = (VkBuffer *)alloca(sizeof(VkBuffer) * count);
-	VkDeviceSize *offsets = (VkDeviceSize *)alloca(sizeof(VkDeviceSize) * count);
-#else
-	VkBuffer buffers[count];
-	VkDeviceSize offsets[count];
-#endif
-	for (int i = 0; i < count; ++i) {
-		buffers[i] = vertexBuffers[i]->impl.vertices.buf;
-		offsets[i] = (VkDeviceSize)(offsets_[i] * kinc_g5_vertex_buffer_stride(vertexBuffers[i]));
-	}
-	vkCmdBindVertexBuffers(list->impl._buffer, 0, count, buffers, offsets);
+void kinc_g5_command_list_set_vertex_buffer(kinc_g5_command_list_t *list, struct kinc_g5_vertex_buffer *vertexBuffer) {
+	VkBuffer buffers[1];
+	VkDeviceSize offsets[1];
+	buffers[0] = vertexBuffer->impl.vertices.buf;
+	offsets[0] = (VkDeviceSize)(0);
+	vkCmdBindVertexBuffers(list->impl._buffer, 0, 1, buffers, offsets);
 }
 
 void kinc_g5_command_list_set_index_buffer(kinc_g5_command_list_t *list, struct kinc_g5_index_buffer *indexBuffer) {
 	list->impl._indexCount = kinc_g5_index_buffer_count(indexBuffer);
-	vkCmdBindIndexBuffer(list->impl._buffer, indexBuffer->impl.buf, 0,
-	                     indexBuffer->impl.format == KINC_G5_INDEX_BUFFER_FORMAT_16BIT ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
+	vkCmdBindIndexBuffer(list->impl._buffer, indexBuffer->impl.buf, 0, VK_INDEX_TYPE_UINT32);
 }
 
 void kinc_internal_restore_render_target(kinc_g5_command_list_t *list, struct kinc_g5_render_target *target) {
@@ -884,13 +856,6 @@ void kinc_g5_command_list_set_sampler(kinc_g5_command_list_t *list, kinc_g5_text
 		vulkanSamplers[unit.stages[KINC_G5_SHADER_TYPE_FRAGMENT]] = sampler->impl.sampler;
 	}
 }
-
-void kinc_g5_command_list_set_image_texture(kinc_g5_command_list_t *list, kinc_g5_texture_unit_t unit, kinc_g5_texture_t *texture) {
-	vulkanTextures[unit.stages[KINC_G5_SHADER_TYPE_COMPUTE]] = texture;
-	vulkanRenderTargets[unit.stages[KINC_G5_SHADER_TYPE_COMPUTE]] = NULL;
-}
-
-void kinc_g5_command_list_set_render_target_face(kinc_g5_command_list_t *list, kinc_g5_render_target_t *texture, int face) {}
 
 void kinc_g5_command_list_set_texture_from_render_target(kinc_g5_command_list_t *list, kinc_g5_texture_unit_t unit, kinc_g5_render_target_t *target) {
 	if (unit.stages[KINC_G5_SHADER_TYPE_FRAGMENT] >= 0) {

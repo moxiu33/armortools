@@ -2,10 +2,8 @@
 // Global data list
 let data_cached_scene_raws: map_t<string, scene_t> = map_create();
 let data_cached_meshes: map_t<string, mesh_data_t> = map_create();
-let data_cached_lights: map_t<string, light_data_t> = map_create();
 let data_cached_cameras: map_t<string, camera_data_t> = map_create();
 let data_cached_materials: map_t<string, material_data_t> = map_create();
-let data_cached_particles: map_t<string, particle_data_t> = map_create();
 let data_cached_worlds: map_t<string, world_data_t> = map_create();
 let data_cached_shaders: map_t<string, shader_data_t> = map_create();
 
@@ -31,18 +29,6 @@ function data_get_mesh(file: string, name: string): mesh_data_t {
 	return b;
 }
 
-function data_get_light(file: string, name: string): light_data_t {
-	let handle: string = file + name;
-	let cached: light_data_t = map_get(data_cached_lights, handle);
-	if (cached != null) {
-		return cached;
-	}
-
-	let b: light_data_t = light_data_parse(file, name);
-	map_set(data_cached_lights, handle, b);
-	return b;
-}
-
 function data_get_camera(file: string, name: string): camera_data_t {
 	let handle: string = file + name;
 	let cached: camera_data_t = map_get(data_cached_cameras, handle);
@@ -64,18 +50,6 @@ function data_get_material(file: string, name: string): material_data_t {
 
 	let b: material_data_t = material_data_parse(file, name);
 	map_set(data_cached_materials, handle, b);
-	return b;
-}
-
-function data_get_particle(file: string, name: string): particle_data_t {
-	let handle: string = file + name;
-	let cached: particle_data_t = map_get(data_cached_particles, handle);
-	if (cached != null) {
-		return cached;
-	}
-
-	let b: particle_data_t = particle_data_parse(file, name);
-	map_set(data_cached_particles, handle, b);
 	return b;
 }
 
@@ -264,10 +238,8 @@ function data_delete_all() {
 	data_cached_shaders = map_create();
 
 	data_cached_scene_raws = map_create();
-	data_cached_lights = map_create();
 	data_cached_cameras = map_create();
 	data_cached_materials = map_create();
-	data_cached_particles = map_create();
 	data_cached_worlds = map_create();
 	render_path_unload();
 	data_cached_blobs = map_create();

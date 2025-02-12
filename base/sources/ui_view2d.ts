@@ -39,7 +39,7 @@ function ui_view2d_init() {
 	g4_vertex_struct_add(vs, "pos", vertex_data_t.F32_3X);
 	g4_vertex_struct_add(vs, "tex", vertex_data_t.F32_2X);
 	g4_vertex_struct_add(vs, "col", vertex_data_t.U8_4X_NORM);
-	ui_view2d_pipe.input_layout = [vs];
+	ui_view2d_pipe.input_layout = vs;
 	ui_view2d_pipe.blend_source = blend_factor_t.BLEND_ONE;
 	ui_view2d_pipe.blend_dest = blend_factor_t.BLEND_ZERO;
 	ui_view2d_pipe.color_write_masks_alpha[0] = false;
@@ -219,15 +219,10 @@ function ui_view2d_render() {
 
 			///if (is_paint || is_sculpt)
 			if (ui_view2d_type == view_2d_type_t.LAYER) {
-				///if (!arm_opengl)
 				g2_set_pipeline(ui_view2d_pipe);
-				///end
 				if (!context_raw.texture_filter) {
 					g2_set_bilinear_filter(false);
 				}
-				///if arm_opengl
-				iron_g4_set_pipeline(ui_view2d_pipe.pipeline_);
-				///end
 				iron_g4_set_int(ui_view2d_channel_loc, channel);
 			}
 			///end

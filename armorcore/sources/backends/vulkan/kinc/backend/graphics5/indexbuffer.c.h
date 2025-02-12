@@ -1,31 +1,26 @@
 #include "vulkan.h"
-
 #include <kinc/graphics5/indexbuffer.h>
 
 bool memory_type_from_properties(uint32_t typeBits, VkFlags requirements_mask, uint32_t *typeIndex);
 
-kinc_g5_index_buffer_t *currentIndexBuffer = NULL;
-
 static void unset(kinc_g5_index_buffer_t *buffer) {
-	if (currentIndexBuffer == buffer) {
-		currentIndexBuffer = NULL;
-	}
 }
 
-void kinc_g5_index_buffer_init(kinc_g5_index_buffer_t *buffer, int indexCount, kinc_g5_index_buffer_format_t format, bool gpuMemory) {
+void kinc_g5_index_buffer_init(kinc_g5_index_buffer_t *buffer, int indexCount, bool gpuMemory) {
 	buffer->impl.count = indexCount;
-	buffer->impl.format = format;
 
 	VkBufferCreateInfo buf_info = {0};
 	buf_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	buf_info.pNext = NULL;
-	buf_info.size = format == KINC_G5_INDEX_BUFFER_FORMAT_16BIT ? indexCount * sizeof(uint16_t) : indexCount * sizeof(uint32_t);
+	buf_info.size = indexCount * sizeof(uint32_t);
 	buf_info.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-#ifdef KINC_VKRT
-	buf_info.usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-	buf_info.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-	buf_info.usage |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
-#endif
+
+	if (kinc_g5_supports_raytracing()) {
+		buf_info.usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+		buf_info.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		buf_info.usage |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
+	}
+
 	buf_info.flags = 0;
 
 	memset(&buffer->impl.mem_alloc, 0, sizeof(VkMemoryAllocateInfo));
@@ -47,12 +42,12 @@ void kinc_g5_index_buffer_init(kinc_g5_index_buffer_t *buffer, int indexCount, k
 	bool pass = memory_type_from_properties(mem_reqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &buffer->impl.mem_alloc.memoryTypeIndex);
 	assert(pass);
 
-#ifdef KINC_VKRT
 	VkMemoryAllocateFlagsInfo memory_allocate_flags_info = {0};
-	memory_allocate_flags_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
-	memory_allocate_flags_info.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR;
-	buffer->impl.mem_alloc.pNext = &memory_allocate_flags_info;
-#endif
+	if (kinc_g5_supports_raytracing()) {
+		memory_allocate_flags_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
+		memory_allocate_flags_info.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR;
+		buffer->impl.mem_alloc.pNext = &memory_allocate_flags_info;
+	}
 
 	err = vkAllocateMemory(vk_ctx.device, &buffer->impl.mem_alloc, NULL, &buffer->impl.mem);
 	assert(!err);
@@ -68,7 +63,7 @@ void kinc_g5_index_buffer_destroy(kinc_g5_index_buffer_t *buffer) {
 }
 
 static int kinc_g5_internal_index_buffer_stride(kinc_g5_index_buffer_t *buffer) {
-	return buffer->impl.format == KINC_G5_INDEX_BUFFER_FORMAT_16BIT ? 2 : 4;
+	return 4;
 }
 
 void *kinc_g5_index_buffer_lock_all(kinc_g5_index_buffer_t *buffer) {

@@ -4,12 +4,6 @@ type mesh_object_t = {
 	data?: mesh_data_t;
 	materials?: material_data_t[];
 	material_index?: i32;
-	///if arm_particles
-	particle_systems?: particle_sys_t[]; // Particle owner
-	particle_children?: mesh_object_t[];
-	particle_owner?: mesh_object_t; // Particle object
-	particle_index?: i32;
-	///end
 	camera_dist?: f32;
 	screen_size?: f32;
 	frustum_culling?: bool;
@@ -25,9 +19,6 @@ let _mesh_object_shader_contexts: shader_context_t[] = [];
 function mesh_object_create(data: mesh_data_t, materials: material_data_t[]): mesh_object_t {
 	let raw: mesh_object_t = {};
 	raw.material_index = 0;
-	///if arm_particles
-	raw.particle_index = -1;
-	///end
 	raw.screen_size = 0.0;
 	raw.frustum_culling = true;
 	raw.prev_matrix = mat4_identity();
@@ -51,22 +42,6 @@ function mesh_object_set_data(raw: mesh_object_t, data: mesh_data_t) {
 }
 
 function mesh_object_remove(raw: mesh_object_t) {
-	///if arm_particles
-	if (raw.particle_children != null) {
-		for (let i: i32 = 0; i < raw.particle_children.length; ++i) {
-			let c: mesh_object_t = raw.particle_children[i];
-			mesh_object_remove(c);
-		}
-		raw.particle_children = null;
-	}
-	if (raw.particle_systems != null) {
-		for (let i: i32 = 0; i < raw.particle_systems.length; ++i) {
-			let psys: particle_sys_t = raw.particle_systems[i];
-			particle_sys_remove(psys);
-		}
-		raw.particle_systems = null;
-	}
-	///end
 	array_remove(scene_meshes, raw);
 	raw.data._.refcount--;
 
@@ -92,16 +67,6 @@ function mesh_object_setup_animation(raw: mesh_object_t, oactions: scene_t[] = n
 	object_setup_animation_super(raw.base, oactions);
 	///end
 }
-
-///if arm_particles
-function mesh_object_setup_particle_system(raw: mesh_object_t, scene_name: string, pref: particle_ref_t) {
-	if (raw.particle_systems == null) {
-		raw.particle_systems = [];
-	}
-	let psys: particle_sys_t = particle_sys_create(scene_name, pref);
-	array_push(raw.particle_systems, psys);
-}
-///end
 
 function mesh_object_set_culled(raw: mesh_object_t, b: bool): bool {
 	raw.base.culled = b;
@@ -129,28 +94,13 @@ function mesh_object_cull_material(raw: mesh_object_t, context: string): bool {
 	return mesh_object_set_culled(raw, false);
 }
 
-function mesh_object_cull_mesh(raw: mesh_object_t, context: string, camera: camera_object_t, light: light_object_t): bool {
+function mesh_object_cull_mesh(raw: mesh_object_t, context: string, camera: camera_object_t): bool {
 	if (camera == null) {
 		return false;
 	}
 
 	if (camera.data.frustum_culling && raw.frustum_culling) {
-		// Scale radius for skinned mesh and particle system
-		// TODO: define skin & particle bounds
-		let radius_scale: f32 = raw.data.skin != null ? 2.0 : 1.0;
-		///if arm_particles
-		// particle_systems for update, particle_owner for render
-		if (raw.particle_systems != null || raw.particle_owner != null) {
-			radius_scale *= 1000;
-		}
-		///end
-		if (context == "voxel") {
-			radius_scale *= 100;
-		}
-		if (raw.data._.instanced) {
-			radius_scale *= 100;
-		}
-
+		let radius_scale: f32 = 1.0;
 		let frustum_planes: frustum_plane_t[] = camera.frustum_planes;
 		if (!camera_object_sphere_in_frustum(frustum_planes, raw.base.transform, radius_scale)) {
 			return mesh_object_set_culled(raw, true);
@@ -187,39 +137,9 @@ function mesh_object_render(raw: mesh_object_t, context: string, bind_params: st
 	if (!raw.base.visible) {
 		return; // Skip render if object is hidden
 	}
-	if (mesh_object_cull_mesh(raw, context, scene_camera, _render_path_light)) {
+	if (mesh_object_cull_mesh(raw, context, scene_camera)) {
 		return;
 	}
-	let mesh_context: bool = raw.base.raw != null ? context == "mesh" : false;
-
-	///if arm_particles
-	if (raw.base.raw != null && raw.base.raw.particles != null && raw.base.raw.particles.is_particle && raw.particle_owner == null) {
-		return; // Instancing not yet set-up by particle system owner
-	}
-	if (raw.particle_systems != null && mesh_context) {
-		if (raw.particle_children == null) {
-			raw.particle_children = [];
-			for (let i: i32 = 0; i < raw.particle_systems.length; ++i) {
-				let psys: particle_sys_t = raw.particle_systems[i];
-				// let c: mesh_object_t = scene_get_child(psys.data.raw.instance_object);
-				let o: object_t = scene_spawn_object(psys.data.instance_object);
-				if (o != null) {
-					let c: mesh_object_t = o.ext;
-					array_push(raw.particle_children, c);
-					c.particle_owner = raw;
-					c.particle_index = raw.particle_children.length - 1;
-				}
-			}
-		}
-		for (let i: i32 = 0; i < raw.particle_systems.length; ++i) {
-			particle_sys_update(raw.particle_systems[i], raw.particle_children[i], raw);
-		}
-	}
-	if (raw.particle_systems != null && raw.particle_systems.length > 0 && raw.base.raw.particles != null && !raw.base.raw.particles.render_emitter) {
-		return;
-	}
-	///end
-
 	if (mesh_object_cull_material(raw, context)) {
 		return;
 	}
@@ -261,25 +181,9 @@ function mesh_object_render(raw: mesh_object_t, context: string, bind_params: st
 			uniforms_set_material_consts(scontext, material_contexts[mi]);
 		}
 
-		// VB / IB
-		if (raw.data._.instanced_vb != null) {
-			let vb: vertex_buffer_t = mesh_data_get(raw.data, elems);
-			let vbs: vertex_buffer_t[] = [vb.buffer_, raw.data._.instanced_vb.buffer_];
-			g4_set_vertex_buffers(vbs);
-		}
-		else {
-			g4_set_vertex_buffer(mesh_data_get(raw.data, elems));
-		}
-
+		g4_set_vertex_buffer(mesh_data_get(raw.data, elems));
 		g4_set_index_buffer(raw.data._.index_buffers[i]);
-
-		// Draw
-		if (raw.data._.instanced) {
-			g4_draw_inst(raw.data._.instance_count, 0, -1);
-		}
-		else {
-			g4_draw(0, -1);
-		}
+		g4_draw();
 	}
 
 	raw.prev_matrix = mat4_clone(raw.base.transform.world_unpack);

@@ -20,9 +20,7 @@ void kinc_window_change_framebuffer(int window, struct kinc_framebuffer_options 
 	kinc_internal_change_framebuffer(0, frame);
 }
 
-#ifdef KINC_METAL
 void kinc_internal_change_framebuffer(int window, struct kinc_framebuffer_options *frame) {}
-#endif
 
 void kinc_window_change_features(int window, int features) {}
 
@@ -46,8 +44,6 @@ void kinc_window_set_resize_callback(int window, void (*callback)(int x, int y, 
 	windows[window].resizeCallback = callback;
 	windows[window].resizeCallbackData = data;
 }
-
-void kinc_window_set_ppi_changed_callback(int window, void (*callback)(int ppi, void *data), void *data) {}
 
 kinc_window_mode_t kinc_window_get_mode(int window) {
 	return KINC_WINDOW_MODE_WINDOW;

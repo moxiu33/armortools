@@ -8,8 +8,6 @@ type render_target_t = {
 	scale?: f32;
 	depth_buffer?: string; // 2D texture
 	mipmaps?: bool;
-	depth?: i32; // 3D texture
-	is_image?: bool; // Image
 	// Runtime
 	_depth_format?: depth_format_t;
 	_depth_from?: string;
@@ -35,11 +33,9 @@ let render_path_commands: ()=>void = null;
 let render_path_render_targets: map_t<string, render_target_t> = map_create();
 let render_path_current_w: i32;
 let render_path_current_h: i32;
-let render_path_current_d: i32;
 let _render_path_frame_time: f32 = 0.0;
 let _render_path_frame: i32 = 0;
 let _render_path_current_target: render_target_t = null;
-let _render_path_light: light_object_t = null;
 let _render_path_current_image: image_t = null;
 let _render_path_draw_order: draw_order_t = draw_order_t.DIST;
 let _render_path_paused: bool = false;
@@ -58,13 +54,6 @@ function render_path_ready(): bool {
 	return _render_path_loading == 0;
 }
 
-///if arm_voxels
-let _render_path_voxelized: i32 = 0;
-function render_path_voxelize(): bool { // Returns true if scene should be voxelized
-	return ++_render_path_voxelized > 2 ? false : true;
-}
-///end
-
 function render_path_render_frame() {
 	if (!render_path_ready() ||_render_path_paused || app_w() == 0 || app_h() == 0) {
 		return;
@@ -81,18 +70,7 @@ function render_path_render_frame() {
 
 	render_path_current_w = app_w();
 	render_path_current_h = app_h();
-	render_path_current_d = 1;
 	_render_path_meshes_sorted = false;
-
-	for (let i: i32 = 0; i < scene_lights.length; ++i) {
-		let l: light_object_t = scene_lights[i];
-		if (l.base.visible) {
-			light_object_build_mat(l, scene_camera);
-		}
-	}
-	if (scene_lights.length > 0) {
-		_render_path_light = scene_lights[0];
-	}
 
 	render_path_commands();
 
@@ -101,7 +79,6 @@ function render_path_render_frame() {
 
 function render_path_set_target(target: string, additional: string[] = null) {
 	if (target == "") { // Framebuffer
-		render_path_current_d = 1;
 		_render_path_current_target = null;
 		render_path_current_w = app_w();
 		render_path_current_h = app_h();
@@ -123,9 +100,6 @@ function render_path_set_target(target: string, additional: string[] = null) {
 		}
 		render_path_current_w = rt._image.width;
 		render_path_current_h = rt._image.height;
-		if (rt.depth > 1) {
-			render_path_current_d = rt._image.depth;
-		}
 		render_path_begin(rt._image, additional_images);
 	}
 	_render_path_bind_params = null;
@@ -171,11 +145,6 @@ function render_path_set_viewport(view_w: i32, view_h: i32) {
 
 function render_path_clear_target(color: color_t = 0x00000000, depth: f32 = 0.0, flags: i32 = clear_flag_t.COLOR) {
 	g4_clear(color, depth, flags);
-}
-
-function render_path_clear_image(target: string, color: i32) {
-	let rt: render_target_t = map_get(render_path_render_targets, target);
-	image_clear(rt._image, 0, 0, 0, rt._image.width, rt._image.height, rt._image.depth, color);
 }
 
 function render_path_gen_mipmaps(target: string) {
@@ -417,36 +386,17 @@ function render_path_create_target(t: render_target_t): render_target_t {
 function render_path_create_image(t: render_target_t, depth_format: depth_format_t): image_t {
 	let width: i32 = t.width == 0 ? app_w() : t.width;
 	let height: i32 = t.height == 0 ? app_h() : t.height;
-	let depth: i32 = t.depth;
 	width = math_floor(width * t.scale);
 	height = math_floor(height * t.scale);
-	depth = math_floor(depth * t.scale);
 	if (width < 1) {
 		width = 1;
 	}
 	if (height < 1) {
 		height = 1;
 	}
-	if (t.depth > 1) { // 3D texture
-		// Image only
-		let img: image_t = image_create_3d(width, height, depth,
-			t.format != null ? render_path_get_tex_format(t.format) : tex_format_t.RGBA32);
-		if (t.mipmaps) {
-			image_gen_mipmaps(img, 1000); // Allocate mipmaps
-		}
-		return img;
-	}
-	else { // 2D texture
-		if (t.is_image) { // Image
-			return image_create(width, height,
-				t.format != null ? render_path_get_tex_format(t.format) : tex_format_t.RGBA32);
-		}
-		else { // Render target
-			return image_create_render_target(width, height,
-				t.format != null ? render_path_get_tex_format(t.format) : tex_format_t.RGBA32,
-				depth_format);
-		}
-	}
+	return image_create_render_target(width, height,
+		t.format != null ? render_path_get_tex_format(t.format) : tex_format_t.RGBA32,
+		depth_format);
 }
 
 function render_path_get_tex_format(s: string): tex_format_t {
@@ -491,8 +441,6 @@ function render_target_create(): render_target_t {
 	let raw: render_target_t = {};
 	raw.scale = 1.0;
 	raw.mipmaps = false;
-	raw.depth = 1;
-	raw.is_image = false;
 	raw._depth_from = "";
 	raw._has_depth = false;
 	return raw;

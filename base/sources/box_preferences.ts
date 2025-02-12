@@ -573,7 +573,16 @@ function box_preferences_show() {
 		}
 
 		if (ui_tab(box_preferences_htab, tr("Viewport"), true)) {
-			///if (arm_direct3d12 || arm_vulkan || arm_metal)
+
+			let mode_handle: ui_handle_t = ui_handle(__ID__);
+			if (mode_handle.init) {
+				mode_handle.position = config_raw.workspace;
+			}
+			let mode_combo: string[] = [tr("Lit"), tr("Path Traced")];
+			ui_combo(mode_handle, mode_combo, tr("Default Mode"), true);
+			if (mode_handle.changed) {
+				config_raw.viewport_mode = mode_handle.position;
+			}
 
 			let hpathtrace_mode: ui_handle_t = ui_handle(__ID__);
 			if (hpathtrace_mode.init) {
@@ -586,8 +595,6 @@ function box_preferences_show() {
 				render_path_raytrace_first = true;
 				context_raw.ddirty = 2;
 			}
-
-			///end
 
 			let hrender_mode: ui_handle_t = ui_handle(__ID__);
 			if (hrender_mode.init) {
@@ -606,35 +613,6 @@ function box_preferences_show() {
 			}
 
 			if (context_raw.render_mode == render_mode_t.DEFERRED) {
-				///if arm_voxels
-				ui_check(context_raw.hvxao, tr("Voxel AO"));
-				if (ui.is_hovered) {
-					ui_tooltip(tr("Cone-traced AO and shadows"));
-				}
-				if (context_raw.hvxao.changed) {
-					config_apply();
-				}
-
-				ui.enabled = context_raw.hvxao.selected;
-				let h: ui_handle_t = ui_handle(__ID__);
-				if (h.init) {
-					h.value = context_raw.vxao_offset;
-				}
-				context_raw.vxao_offset = ui_slider(h, tr("Cone Offset"), 1.0, 4.0, true);
-				if (h.changed) {
-					context_raw.ddirty = 2;
-				}
-				h = ui_handle(__ID__);
-				if (h.init) {
-					h.value = context_raw.vxao_aperture;
-				}
-				context_raw.vxao_aperture = ui_slider(h, tr("Aperture"), 1.0, 4.0, true);
-				if (h.changed) {
-					context_raw.ddirty = 2;
-				}
-				ui.enabled = true;
-				///end
-
 				ui_check(context_raw.hssao, tr("SSAO"));
 				if (context_raw.hssao.changed) {
 					config_apply();

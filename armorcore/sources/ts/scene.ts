@@ -2,7 +2,6 @@
 let scene_camera: camera_object_t;
 let scene_world: world_data_t;
 let scene_meshes: mesh_object_t[];
-let scene_lights: light_object_t[];
 let scene_cameras: camera_object_t[];
 ///if arm_audio
 let scene_speakers: speaker_object_t[];
@@ -28,7 +27,6 @@ let _scene_objects_count: i32;
 function scene_create(format: scene_t): object_t {
 	_scene_uid = _scene_uid_counter++;
 	scene_meshes = [];
-	scene_lights = [];
 	scene_cameras = [];
 	///if arm_audio
 	scene_speakers = [];
@@ -66,10 +64,6 @@ function scene_remove() {
 		let o: mesh_object_t = scene_meshes[i];
 		mesh_object_remove(o);
 	}
-	for (let i: i32 = 0; i < scene_lights.length; ++i) {
-		let o: light_object_t = scene_lights[i];
-		light_object_remove(o);
-	}
 	for (let i: i32 = 0; i < scene_cameras.length; ++i) {
 		let o: camera_object_t = scene_cameras[i];
 		camera_object_remove(o);
@@ -91,10 +85,6 @@ function scene_set_active(scene_name: string): object_t {
 	if (_scene_root != null) {
 		scene_remove();
 	}
-
-	///if arm_voxels // Revoxelize
-	_render_path_voxelized = 0;
-	///end
 
 	let format: scene_t = data_get_scene_raw(scene_name);
 	let o: object_t = scene_create(format);
@@ -149,16 +139,6 @@ function scene_get_mesh(name: string): mesh_object_t {
 	return null;
 }
 
-function scene_get_light(name: string): light_object_t {
-	for (let i: i32 = 0; i < scene_lights.length; ++i) {
-		let l: light_object_t = scene_lights[i];
-		if (l.base.name == name) {
-			return l;
-		}
-	}
-	return null;
-}
-
 function scene_get_camera(name: string): camera_object_t {
 	for (let i: i32 = 0; i < scene_cameras.length; ++i) {
 		let c: camera_object_t = scene_cameras[i];
@@ -193,12 +173,6 @@ function scene_get_empty(name: string): object_t {
 
 function scene_add_mesh_object(data: mesh_data_t, materials: material_data_t[], parent: object_t = null): mesh_object_t {
 	let object: mesh_object_t = mesh_object_create(data, materials);
-	parent != null ? object_set_parent(object.base, parent) : object_set_parent(object.base, _scene_root);
-	return object;
-}
-
-function scene_add_light_object(data: light_data_t, parent: object_t = null): light_object_t {
-	let object: light_object_t = light_object_create(data);
 	parent != null ? object_set_parent(object.base, parent) : object_set_parent(object.base, _scene_root);
 	return object;
 }
@@ -309,11 +283,6 @@ function scene_create_object(o: obj_t, format: scene_t, parent: object_t, parent
 		let object: camera_object_t = scene_add_camera_object(b, parent);
 		return scene_return_object(object.base, o);
 	}
-	else if (o.type == "light_object") {
-		let b: light_data_t = data_get_light(scene_name, o.data_ref);
-		let object: light_object_t = scene_add_light_object(b, parent);
-		return scene_return_object(object.base, o);
-	}
 	else if (o.type == "mesh_object") {
 		if (o.material_refs == null || o.material_refs.length == 0) {
 			return scene_create_mesh_object(o, format, parent, parent_object, null);
@@ -410,15 +379,6 @@ function scene_return_mesh_object(object_file: string, data_ref: string, scene_n
 	///end
 	let object: mesh_object_t = scene_add_mesh_object(mesh, materials, parent);
 
-	// Attach particle systems
-	///if arm_particles
-	if (o.particles != null && o.particles.refs != null) {
-		for (let i: i32 = 0; i < o.particles.refs.length; ++i) {
-			let ref: particle_ref_t = o.particles.refs[i];
-			mesh_object_setup_particle_system(object, scene_name, ref);
-		}
-	}
-	///end
 	return scene_return_object(object.base, o);
 }
 
@@ -484,31 +444,20 @@ function scene_load_embedded_data(datas: string[]) {
 }
 
 function scene_embed_data(file: string) {
-	if (ends_with(file, ".raw")) {
-		let b: buffer_t = data_get_blob(file);
-		// Raw 3D texture bytes
-		let w: i32 = math_floor(math_pow(b.length, 1 / 3)) + 1;
-		let image: image_t = image_from_bytes_3d(b, w, w, w, tex_format_t.R8);
-		map_set(scene_embedded, file, image);
-	}
-	else {
-		let image: image_t = data_get_image(file);
-		map_set(scene_embedded, file, image);
-	}
+	let image: image_t = data_get_image(file);
+	map_set(scene_embedded, file, image);
 }
 
 type scene_t = {
 	name?: string;
 	objects?: obj_t[];
 	mesh_datas?: mesh_data_t[];
-	light_datas?: light_data_t[];
 	camera_datas?: camera_data_t[];
 	camera_ref?: string;
 	material_datas?: material_data_t[];
 	shader_datas?: shader_data_t[];
 	world_datas?: world_data_t[];
 	world_ref?: string;
-	particle_datas?: particle_data_t[];
 	speaker_datas?: speaker_data_t[];
 	embedded_datas?: string[]; // Preload for this scene, images only for now
 };
@@ -517,7 +466,6 @@ type mesh_data_t = {
 	name?: string;
 	scale_pos?: f32; // Unpack pos from (-1,1) coords
 	scale_tex?: f32; // Unpack tex from (-1,1) coords
-	instancing?: mesh_data_instancing_t;
 	skin?: skin_t;
 	vertex_arrays?: vertex_array_t[];
 	index_arrays?: index_array_t[];
@@ -535,19 +483,11 @@ type mesh_data_runtime_t = {
 	indices?: u32_array_t[];
 	material_indices?: i32[];
 	structure?: vertex_struct_t;
-	instanced_vb?: vertex_buffer_t;
-	instanced?: bool;
-	instance_count?: i32;
 	///if arm_skin
 	skeleton_transforms_inv?: mat4_t[];
 	actions?: map_t<string, obj_t[]>;
 	mats?: map_t<string, mat4_t[]>;
 	///end
-};
-
-type mesh_data_instancing_t = {
-	type?: i32; // off, loc, loc+rot, loc+scale, loc+rot+scale
-	data?: f32_array_t;
 };
 
 type skin_t = {
@@ -569,14 +509,6 @@ type vertex_array_t = {
 type index_array_t = {
 	material?: i32;
 	values?: u32_array_t; // size = 3
-};
-
-type light_data_t = {
-	name?: string;
-	color?: i32;
-	strength?: f32;
-	size?: f32; // Area light
-	size_y?: f32;
 };
 
 type camera_data_t = {
@@ -647,7 +579,6 @@ type shader_context_t = {
 	cull_mode?: string;
 	vertex_shader?: string;
 	fragment_shader?: string;
-	geometry_shader?: string;
 	shader_from_source?: bool; // Build shader at runtime using from_source()
 	blend_source?: string;
 	blend_destination?: string;
@@ -673,7 +604,6 @@ type shader_context_runtime_t = {
 	tex_units?: kinc_tex_unit_t[];
 	override_context?: _shader_override_t;
 	structure?: vertex_struct_t;
-	instancing_type?: i32;
 };
 
 type _shader_override_t = {
@@ -696,7 +626,6 @@ type shader_const_t = {
 type tex_unit_t = {
 	name?: string;
 	link?: string;
-	image_uniform?: bool; // uniform layout(r8) writeonly image3D voxels
 };
 
 type speaker_data_t = {
@@ -732,41 +661,14 @@ type irradiance_t = {
 	irradiance?: f32_array_t; // Blob with spherical harmonics, bands 0,1,2
 };
 
-type particle_data_t = {
-	name?: string;
-	type?: i32; // 0 - Emitter, Hair
-	loop?: bool;
-	count?: i32;
-	frame_start?: f32;
-	frame_end?: f32;
-	lifetime?: f32;
-	lifetime_random?: f32;
-	emit_from?: i32; // 0 - Vert, 1 - Face, 2 - Volume
-	object_align_factor?: f32_array_t;
-	factor_random?: f32;
-	physics_type?: i32; // 0 - No, 1 - Newton
-	particle_size?: f32; // Object scale
-	size_random?: f32; // Random scale
-	mass?: f32;
-	instance_object?: string; // Object reference
-	weight_gravity?: f32;
-};
-
-type particle_ref_t = {
-	name?: string;
-	particle?: string;
-	seed?: i32;
-};
-
 type obj_t = {
 	name?: string;
-	type?: string; // object, mesh_object, light_object, camera_object, speaker_object, decal_object
+	type?: string; // object, mesh_object, camera_object, speaker_object
 	data_ref?: string;
 	transform?: f32_array_t;
 	dimensions?: f32_array_t; // Geometry objects
 	visible?: bool;
 	spawn?: bool; // Auto add object when creating scene
-	particles?: particles_t;
 	anim?: anim_t; // Bone/object animation
 	material_refs?: string[];
 	children?: obj_t[];
@@ -775,12 +677,6 @@ type obj_t = {
 
 type obj_runtime_t = {
 	_gc?: scene_t; // Link to armpack_decode result
-};
-
-type particles_t = {
-	refs?: particle_ref_t[];
-	render_emitter?: bool;
-	is_particle?: bool; // This object is used as a particle object
 };
 
 type anim_t = {

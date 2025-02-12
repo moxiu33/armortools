@@ -2,11 +2,7 @@
 
 #ifndef KINC_ANDROID
 
-#include "MiniVulkan.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "minivulkan.h"
 
 typedef struct {
 	VkPipeline pipeline;
@@ -32,9 +28,5 @@ typedef struct {
 	VkDeviceMemory instances_mem;
 
 } kinc_raytrace_acceleration_structure_impl_t;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

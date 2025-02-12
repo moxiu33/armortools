@@ -21,9 +21,7 @@
 
 #if defined(_WIN32)
 
-#ifndef KINC_CONSOLE
 #define KINC_WINDOWS
-#endif
 
 #elif defined(__APPLE__)
 
@@ -31,10 +29,7 @@
 
 #if TARGET_OS_IPHONE
 
-#if !defined(KINC_TVOS)
 #define KINC_IOS
-#endif
-
 #define KINC_APPLE_SOC
 
 #else

@@ -2,10 +2,6 @@
 
 #include <stdbool.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct ID3D12CommandAllocator;
 struct ID3D12GraphicsCommandList;
 struct ID3D12Fence;
@@ -35,9 +31,7 @@ struct D3D12Rect {
 #define QUEUE_SLOT_COUNT 2
 
 struct dx_window {
-#ifndef KINC_DIRECT3D_HAS_NO_SWAPCHAIN
 	struct IDXGISwapChain *swapChain;
-#endif
 	UINT64 current_fence_value;
 	UINT64 fence_values[QUEUE_SLOT_COUNT];
 	HANDLE frame_fence_events[QUEUE_SLOT_COUNT];
@@ -50,7 +44,3 @@ struct dx_window {
 	bool vsync;
 	int window_index;
 };
-
-#ifdef __cplusplus
-}
-#endif

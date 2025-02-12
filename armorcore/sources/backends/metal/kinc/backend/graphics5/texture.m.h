@@ -1,10 +1,8 @@
 #include <kinc/graphics5/texture.h>
-
 #include <kinc/graphics5/graphics.h>
 #include <kinc/graphics5/texture.h>
 #include <kinc/image.h>
 #include <kinc/log.h>
-
 #import <Metal/Metal.h>
 
 id getMetalDevice(void);
@@ -76,25 +74,13 @@ static void create(kinc_g5_texture_t *texture, int width, int height, int format
 	texture->impl._tex = (__bridge_retained void *)[device newTextureWithDescriptor:descriptor];
 }
 
-/*void Graphics5::Texture::_init(const char* format, bool readable) {
-    texWidth = width;
-    texHeight = height;
-
-    create(width, height, Image::RGBA32, false);
-    lock();
-    unlock();
-}*/
-
 void kinc_g5_texture_init(kinc_g5_texture_t *texture, int width, int height, kinc_image_format_t format) {
-	// Image(width, height, format, readable);
 	texture->texWidth = width;
 	texture->texHeight = height;
 	texture->format = format;
 	texture->impl.data = malloc(width * height * (format == KINC_IMAGE_FORMAT_GREY8 ? 1 : 4));
 	create(texture, width, height, format, true);
 }
-
-void kinc_g5_texture_init3d(kinc_g5_texture_t *texture, int width, int height, int depth, kinc_image_format_t format) {}
 
 void kinc_g5_texture_init_from_image(kinc_g5_texture_t *texture, struct kinc_image *image) {
 	texture->texWidth = image->width;
@@ -133,59 +119,6 @@ void kinc_g5_texture_destroy(kinc_g5_texture_t *texture) {
 id getMetalDevice(void);
 id getMetalEncoder(void);
 
-#if 0
-void kinc_g5_internal_set_texture_descriptor(kinc_g5_texture_t *texture, kinc_g5_texture_descriptor_t descriptor) {
-    MTLSamplerDescriptor* desc = (MTLSamplerDescriptor*) texture->impl._samplerDesc;
-    switch(descriptor.filter_minification) {
-        case KINC_G5_TEXTURE_FILTER_POINT:
-            desc.minFilter = MTLSamplerMinMagFilterNearest;
-            break;
-        default:
-            desc.minFilter = MTLSamplerMinMagFilterLinear;
-    }
-
-    switch(descriptor.filter_magnification) {
-        case KINC_G5_TEXTURE_FILTER_POINT:
-            desc.magFilter = MTLSamplerMinMagFilterNearest;
-            break;
-        default:
-            desc.minFilter = MTLSamplerMinMagFilterLinear;
-    }
-
-    switch(descriptor.addressing_u) {
-        case KINC_G5_TEXTURE_ADDRESSING_REPEAT:
-            desc.sAddressMode = MTLSamplerAddressModeRepeat;
-            break;
-        case KINC_G5_TEXTURE_ADDRESSING_MIRROR:
-            desc.sAddressMode = MTLSamplerAddressModeMirrorRepeat;
-            break;
-        case KINC_G5_TEXTURE_ADDRESSING_CLAMP:
-            desc.sAddressMode = MTLSamplerAddressModeClampToEdge;
-            break;
-        case KINC_G5_TEXTURE_ADDRESSING_BORDER:
-            desc.sAddressMode = MTLSamplerAddressModeClampToBorderColor;
-            break;
-    }
-
-    switch(descriptor.addressing_v) {
-        case KINC_G5_TEXTURE_ADDRESSING_REPEAT:
-            desc.tAddressMode = MTLSamplerAddressModeRepeat;
-            break;
-        case KINC_G5_TEXTURE_ADDRESSING_MIRROR:
-            desc.tAddressMode = MTLSamplerAddressModeMirrorRepeat;
-            break;
-        case KINC_G5_TEXTURE_ADDRESSING_CLAMP:
-            desc.tAddressMode = MTLSamplerAddressModeClampToEdge;
-            break;
-        case KINC_G5_TEXTURE_ADDRESSING_BORDER:
-            desc.tAddressMode = MTLSamplerAddressModeClampToBorderColor;
-            break;
-    }
-    id<MTLDevice> device = getMetalDevice();
-    texture->impl._sampler = [device newSamplerStateWithDescriptor:desc];
-}
-#endif
-
 int kinc_g5_texture_stride(kinc_g5_texture_t *texture) {
 	switch (texture->format) {
 	case KINC_IMAGE_FORMAT_GREY8:
@@ -218,8 +151,6 @@ void kinc_g5_texture_unlock(kinc_g5_texture_t *tex) {
 	           bytesPerRow:kinc_g5_texture_stride(tex)
 	         bytesPerImage:kinc_g5_texture_stride(tex) * tex->texHeight];
 }
-
-void kinc_g5_texture_clear(kinc_g5_texture_t *texture, int x, int y, int z, int width, int height, int depth, unsigned color) {}
 
 void kinc_g5_texture_generate_mipmaps(kinc_g5_texture_t *texture, int levels) {}
 
@@ -254,9 +185,7 @@ void kinc_g5_texture_set_mipmap(kinc_g5_texture_t *texture, kinc_image_t *mipmap
 		               destinationSlice:0
 		               destinationLevel:0
 		              destinationOrigin:MTLOriginMake(0, 0, 0)];
-#ifndef KINC_APPLE_SOC
-		[commandEncoder synchronizeResource:(__bridge id<MTLTexture>)mipmaptex];
-#endif
+
 		[commandEncoder endEncoding];
 		[commandBuffer commit];
 		[commandBuffer waitUntilCompleted];
@@ -274,18 +203,3 @@ void kinc_g5_texture_set_mipmap(kinc_g5_texture_t *texture, kinc_image_t *mipmap
 	         withBytes:mipmap->data
 	       bytesPerRow:mipmap->width * formatByteSize(mipmap->format)];
 }
-
-#include <kinc/graphics4/texture.h>
-
-#if defined(KINC_IOS) || defined(KINC_MACOS)
-void kinc_g4_texture_upload(kinc_g4_texture_t *texture_g4, uint8_t *data, int stride) {
-	kinc_g5_texture_t *tex = &texture_g4->impl._texture;
-	id<MTLTexture> texture = (__bridge id<MTLTexture>)tex->impl._tex;
-	[texture replaceRegion:MTLRegionMake2D(0, 0, tex->texWidth, tex->texHeight)
-	           mipmapLevel:0
-	                 slice:0
-	             withBytes:data
-	           bytesPerRow:stride
-	         bytesPerImage:stride * tex->texHeight];
-}
-#endif

@@ -44,8 +44,7 @@ void kinc_g5_command_list_end(kinc_g5_command_list_t *list) {
 	wgpuQueueSubmit(queue, 1, &commands);
 }
 
-void kinc_g5_command_list_clear(kinc_g5_command_list_t *list, struct kinc_g5_render_target *renderTarget, unsigned flags, unsigned color, float depth,
-                                int stencil) {
+void kinc_g5_command_list_clear(kinc_g5_command_list_t *list, struct kinc_g5_render_target *renderTarget, unsigned flags, unsigned color, float depth) {
 
 }
 
@@ -59,13 +58,6 @@ void kinc_g5_command_list_draw_indexed_vertices(kinc_g5_command_list_t *list) {
 }
 
 void kinc_g5_command_list_draw_indexed_vertices_from_to(kinc_g5_command_list_t *list, int start, int count) {
-
-}
-
-void kinc_g5_command_list_draw_indexed_vertices_instanced(kinc_g5_command_list_t *list, int instanceCount) {
-
-}
-void kinc_g5_command_list_draw_indexed_vertices_instanced_from_to(kinc_g5_command_list_t *list, int instanceCount, int start, int count) {
 
 }
 
@@ -83,21 +75,17 @@ void kinc_g5_command_list_set_pipeline(kinc_g5_command_list_t *list, struct kinc
 	wgpuRenderPassEncoderSetPipeline(list->impl.pass, pipeline->impl.pipeline);
 }
 
-void kinc_g5_command_list_set_blend_constant(kinc_g5_command_list_t *list, float r, float g, float b, float a) {
-	// TODO
-}
-
 void kinc_g5_command_list_set_pipeline_layout(kinc_g5_command_list_t *list) {}
 
-void kinc_g5_command_list_set_vertex_buffers(kinc_g5_command_list_t *list, struct kinc_g5_vertex_buffer **buffers, int *offsets, int count) {
-	uint64_t size = (kinc_g5_vertex_buffer_count(buffers[0]) - offsets[0]) * kinc_g5_vertex_buffer_stride(buffers[0]);
-	wgpuRenderPassEncoderSetVertexBuffer(list->impl.pass, 0, buffers[0]->impl.buffer, 0, size);
+void kinc_g5_command_list_set_vertex_buffer(kinc_g5_command_list_t *list, struct kinc_g5_vertex_buffer *buffer) {
+	uint64_t size = (kinc_g5_vertex_buffer_count(buffer)) * kinc_g5_vertex_buffer_stride(buffer);
+	wgpuRenderPassEncoderSetVertexBuffer(list->impl.pass, 0, buffer->impl.buffer, 0, size);
 }
 
 void kinc_g5_command_list_set_index_buffer(kinc_g5_command_list_t *list, struct kinc_g5_index_buffer *buffer) {
 	list->impl.indexCount = kinc_g5_index_buffer_count(buffer);
 	uint64_t size = kinc_g5_index_buffer_count(buffer) * sizeof(int);
-	wgpuRenderPassEncoderSetIndexBuffer(list->impl.pass, buffer->impl.buffer, buffer->impl.format == KINC_G5_INDEX_BUFFER_FORMAT_16BIT ? WGPUIndexFormat_Uint16 : WGPUIndexFormat_Uint32, 0, size);
+	wgpuRenderPassEncoderSetIndexBuffer(list->impl.pass, buffer->impl.buffer, WGPUIndexFormat_Uint32, 0, size);
 }
 
 void kinc_g5_command_list_set_render_targets(kinc_g5_command_list_t *list, struct kinc_g5_render_target **targets, int count) {
@@ -129,15 +117,11 @@ void kinc_g5_command_list_set_compute_constant_buffer(kinc_g5_command_list_t *li
 
 }
 
-void kinc_g5_command_list_set_render_target_face(kinc_g5_command_list_t *list, kinc_g5_render_target_t *texture, int face) {}
-
 void kinc_g5_command_list_set_texture(kinc_g5_command_list_t *list, kinc_g5_texture_unit_t unit, kinc_g5_texture_t *texture) {
 
 }
 
 void kinc_g5_command_list_set_sampler(kinc_g5_command_list_t *list, kinc_g5_texture_unit_t unit, kinc_g5_sampler_t *sampler) {}
-
-void kinc_g5_command_list_set_image_texture(kinc_g5_command_list_t *list, kinc_g5_texture_unit_t unit, kinc_g5_texture_t *texture) {}
 
 void kinc_g5_command_list_set_texture_from_render_target(kinc_g5_command_list_t *list, kinc_g5_texture_unit_t unit, kinc_g5_render_target_t *renderTarget) {}
 

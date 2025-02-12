@@ -1,5 +1,4 @@
 #include <kinc/graphics5/indexbuffer.h>
-
 #include <string.h>
 #include <stdlib.h>
 #include <kinc/graphics5/indexbuffer.h>
@@ -8,9 +7,8 @@ extern WGPUDevice device;
 
 kinc_g5_index_buffer_t *kinc_g5_internal_current_index_buffer = NULL;
 
-void kinc_g5_index_buffer_init(kinc_g5_index_buffer_t *buffer, int count, kinc_g5_index_buffer_format_t format, bool gpuMemory) {
+void kinc_g5_index_buffer_init(kinc_g5_index_buffer_t *buffer, int count, bool gpuMemory) {
 	buffer->impl.count = count;
-	buffer->impl.format = format;
 }
 
 void kinc_g5_index_buffer_destroy(kinc_g5_index_buffer_t *buffer) {
@@ -18,7 +16,7 @@ void kinc_g5_index_buffer_destroy(kinc_g5_index_buffer_t *buffer) {
 }
 
 static int kinc_g5_internal_index_buffer_stride(kinc_g5_index_buffer_t *buffer) {
-	return buffer->impl.format == KINC_G5_INDEX_BUFFER_FORMAT_16BIT ? 2 : 4;
+	return 4;
 }
 
 void *kinc_g5_index_buffer_lock_all(kinc_g5_index_buffer_t *buffer) {

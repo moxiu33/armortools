@@ -1,16 +1,12 @@
 #import "BasicOpenGLView.h"
-
 #import <Cocoa/Cocoa.h>
-
 #include <kinc/backend/HIDManager.h>
 #include <kinc/graphics4/graphics.h>
 #include <kinc/input/keyboard.h>
 #include <kinc/log.h>
 #include <kinc/system.h>
 #include <kinc/window.h>
-
 #include "windowdata.h"
-
 #include <kinc/backend/windowdata.h>
 
 bool withAutoreleasepool(bool (*f)(void)) {
@@ -46,17 +42,6 @@ static BasicOpenGLView *view;
 static KincAppDelegate *delegate;
 static struct HIDManager *hidManager;
 
-/*struct KoreWindow : public KoreWindowBase {
-    NSWindow* handle;
-    BasicOpenGLView* view;
-
-    KoreWindow(NSWindow* handle, BasicOpenGLView* view, int x, int y, int width, int height)
-        : KoreWindowBase(x, y, width, height), handle(handle), view(view) {
-        ::view = view;
-    }
-};*/
-
-#ifdef KINC_METAL
 CAMetalLayer *getMetalLayer(void) {
 	return [view metalLayer];
 }
@@ -72,7 +57,6 @@ id getMetalLibrary(void) {
 id getMetalQueue(void) {
 	return [view metalQueue];
 }
-#endif
 
 bool kinc_internal_handle_messages(void) {
 	NSEvent *event = [myapp nextEventMatchingMask:NSAnyEventMask
@@ -92,9 +76,6 @@ bool kinc_internal_handle_messages(void) {
 }
 
 void swapBuffersMac(int windowId) {
-#ifndef KINC_METAL
-	[windows[windowId].view switchBuffers];
-#endif
 }
 
 static int createWindow(kinc_window_options_t *options) {
@@ -185,7 +166,6 @@ int kinc_init(const char *name, int width, int height, kinc_window_options_t *wi
 		addMenubar();
 	}
 
-	// System::_init(name, width, height, &win, &frame);
 	kinc_window_options_t defaultWindowOptions;
 	if (win == NULL) {
 		kinc_window_options_set_defaults(&defaultWindowOptions);
@@ -206,7 +186,7 @@ int kinc_init(const char *name, int width, int height, kinc_window_options_t *wi
 
 	int windowId = createWindow(win);
 	kinc_g4_internal_init();
-	kinc_g4_internal_init_window(windowId, frame->depth_bits, frame->stencil_bits, true);
+	kinc_g4_internal_init_window(windowId, frame->depth_bits, true);
 
 	return 0;
 }

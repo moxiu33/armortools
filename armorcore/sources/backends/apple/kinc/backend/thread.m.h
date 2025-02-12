@@ -1,11 +1,8 @@
 #include <stdio.h>
 #include <string.h>
-
 #include <Foundation/Foundation.h>
-
 #include <kinc/threads/mutex.h>
 #include <kinc/threads/thread.h>
-
 #include <pthread.h>
 #include <stdio.h>
 #include <wchar.h>
@@ -30,7 +27,6 @@ void kinc_thread_init(kinc_thread_t *t, void (*thread)(void *param), void *param
 	sp.sched_priority = 0;
 	pthread_attr_setschedparam(&attr, &sp);
 	pthread_create(&t->impl.pthread, &attr, &ThreadProc, t);
-	// Kt::affirmD(ret == 0);
 	pthread_attr_destroy(&attr);
 }
 

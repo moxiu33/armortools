@@ -254,7 +254,6 @@ type context_t = {
 	selected_object?: object_t;
 
 	///if arm_physics
-	particle_physics?: bool;
 	particle_hit_x?: f32;
 	particle_hit_y?: f32;
 	particle_hit_z?: f32;
@@ -296,11 +295,9 @@ function context_create(): context_t {
 	c.parse_transform = true;
 	c.parse_vcols = false;
 	c.select_time = 0.0;
-	///if (arm_direct3d12 || arm_vulkan)
-	c.viewport_mode = viewport_mode_t.PATH_TRACE;
-	///else
-	c.viewport_mode = viewport_mode_t.LIT;
-	///end
+	c.viewport_mode = config_raw.viewport_mode == 0 ?
+		viewport_mode_t.LIT :
+		viewport_mode_t.PATH_TRACE;
 	///if (arm_android || arm_ios)
 	c.render_mode = render_mode_t.FORWARD;
 	///else
@@ -375,7 +372,6 @@ function context_create(): context_t {
 	c.cache_draws = false;
 	c.write_icon_on_export = false;
 	///if arm_physics
-	c.particle_physics = false;
 	c.particle_hit_x = 0.0;
 	c.particle_hit_y = 0.0;
 	c.particle_hit_z = 0.0;
@@ -586,15 +582,12 @@ function context_init_tool() {
 
 	else if (context_raw.tool == workspace_tool_t.PARTICLE) {
 		util_particle_init();
-		make_material_parse_particle_material();
 	}
 	else if (context_raw.tool == workspace_tool_t.BAKE) {
-		///if (arm_direct3d12 || arm_vulkan || arm_metal)
 		// Bake in lit mode for now
 		if (context_raw.viewport_mode == viewport_mode_t.PATH_TRACE) {
 			context_raw.viewport_mode = viewport_mode_t.LIT;
 		}
-		///end
 	}
 	else if (context_raw.tool == workspace_tool_t.MATERIAL) {
 		layers_update_fill_layers();

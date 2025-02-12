@@ -1,8 +1,7 @@
 #include <kinc/display.h>
 #include <kinc/graphics4/graphics.h>
 #include <kinc/window.h>
-
-#include <kinc/backend/Windows.h>
+#include <kinc/backend/windows.h>
 
 #undef CreateWindow
 
@@ -27,8 +26,6 @@ typedef struct {
 	int manualWidth, manualHeight;
 	void (*resizeCallback)(int x, int y, void *data);
 	void *resizeCallbackData;
-	void (*ppiCallback)(int ppi, void *data);
-	void *ppiCallbackData;
 	bool (*closeCallback)(void *data);
 	void *closeCallbackData;
 } WindowData;
@@ -39,37 +36,7 @@ LRESULT WINAPI KoreWindowsMessageProcedure(HWND hWnd, UINT msg, WPARAM wParam, L
 static WindowData windows[MAXIMUM_WINDOWS] = {0};
 static int window_counter = 0;
 
-#ifdef KINC_OCULUS
-const wchar_t *windowClassName = L"ORT";
-#else
 const wchar_t *windowClassName = L"KoreWindow";
-#endif
-
-#ifdef KINC_VULKAN
-#include <vulkan/vulkan_core.h>
-#include <vulkan/vulkan_win32.h>
-
-VkResult kinc_vulkan_create_surface(VkInstance instance, int window_index, VkSurfaceKHR *surface) {
-	VkWin32SurfaceCreateInfoKHR createInfo = {0};
-	createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-	createInfo.pNext = NULL;
-	createInfo.flags = 0;
-	createInfo.hinstance = GetModuleHandle(NULL);
-	createInfo.hwnd = windows[window_index].handle;
-	return vkCreateWin32SurfaceKHR(instance, &createInfo, NULL, surface);
-}
-
-#include <assert.h>
-
-void kinc_vulkan_get_instance_extensions(const char **names, int *index, int max) {
-	assert(*index + 1 < max);
-	names[(*index)++] = VK_KHR_WIN32_SURFACE_EXTENSION_NAME;
-}
-
-VkBool32 kinc_vulkan_get_physical_device_presentation_support(VkPhysicalDevice physicalDevice, uint32_t queueFamilyIndex) {
-	return vkGetPhysicalDeviceWin32PresentationSupportKHR(physicalDevice, queueFamilyIndex);
-}
-#endif
 
 static void RegisterWindowClass(HINSTANCE hInstance, const wchar_t *className) {
 	WNDCLASSEXW wc = {sizeof(WNDCLASSEXA),
@@ -398,12 +365,9 @@ int kinc_window_create(kinc_window_options_t *win, kinc_framebuffer_options_t *f
 	int windowId = createWindow(wbuffer, win->x, win->y, win->width, win->height, frame->color_bits, frame->frequency, win->window_features, win->mode,
 	                            win->display_index);
 
-	kinc_g4_set_antialiasing_samples(frame->samples_per_pixel);
 	bool vsync = frame->vertical_sync;
-#ifdef KINC_OCULUS
-	vsync = false;
-#endif
-	kinc_g4_internal_init_window(windowId, frame->depth_bits, frame->stencil_bits, vsync);
+
+	kinc_g4_internal_init_window(windowId, frame->depth_bits, vsync);
 
 	if (win->visible) {
 		kinc_window_show(windowId);
@@ -415,11 +379,6 @@ int kinc_window_create(kinc_window_options_t *win, kinc_framebuffer_options_t *f
 void kinc_window_set_resize_callback(int window_index, void (*callback)(int x, int y, void *data), void *data) {
 	windows[window_index].resizeCallback = callback;
 	windows[window_index].resizeCallbackData = data;
-}
-
-void kinc_window_set_ppi_changed_callback(int window_index, void (*callback)(int ppi, void *data), void *data) {
-	windows[window_index].ppiCallback = callback;
-	windows[window_index].ppiCallbackData = data;
 }
 
 void kinc_window_set_close_callback(int window_index, bool (*callback)(void *data), void *data) {
@@ -446,12 +405,6 @@ int kinc_windows_manual_height(int window) {
 void kinc_internal_call_resize_callback(int window_index, int width, int height) {
 	if (windows[window_index].resizeCallback != NULL) {
 		windows[window_index].resizeCallback(width, height, windows[window_index].resizeCallbackData);
-	}
-}
-
-void kinc_internal_call_ppi_changed_callback(int window_index, int ppi) {
-	if (windows[window_index].ppiCallback != NULL) {
-		windows[window_index].ppiCallback(ppi, windows[window_index].ppiCallbackData);
 	}
 }
 

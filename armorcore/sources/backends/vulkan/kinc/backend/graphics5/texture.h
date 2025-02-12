@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MiniVulkan.h"
+#include "minivulkan.h"
 
 struct texture_object {
 	VkImage image;
@@ -8,7 +8,8 @@ struct texture_object {
 
 	VkDeviceMemory mem;
 	VkImageView view;
-	int32_t tex_width, tex_height;
+	int32_t tex_width;
+	int32_t tex_height;
 };
 
 typedef struct {

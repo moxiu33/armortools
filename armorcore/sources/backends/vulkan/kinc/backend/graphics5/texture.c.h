@@ -1,5 +1,4 @@
 #include "vulkan.h"
-
 #include <kinc/graphics5/texture.h>
 #include <kinc/image.h>
 #include <kinc/log.h>
@@ -346,8 +345,6 @@ void kinc_g5_texture_init(kinc_g5_texture_t *texture, int width, int height, kin
 	assert(!err);
 }
 
-void kinc_g5_texture_init3d(kinc_g5_texture_t *texture, int width, int height, int depth, kinc_image_format_t format) {}
-
 void kinc_g5_texture_init_non_sampled_access(kinc_g5_texture_t *texture, int width, int height, kinc_image_format_t format) {
 	texture->texWidth = width;
 	texture->texHeight = height;
@@ -412,8 +409,6 @@ uint8_t *kinc_g5_texture_lock(kinc_g5_texture_t *texture) {
 void kinc_g5_texture_unlock(kinc_g5_texture_t *texture) {
 	vkUnmapMemory(vk_ctx.device, texture->impl.texture.mem);
 }
-
-void kinc_g5_texture_clear(kinc_g5_texture_t *texture, int x, int y, int z, int width, int height, int depth, unsigned color) {}
 
 void kinc_g5_texture_generate_mipmaps(kinc_g5_texture_t *texture, int levels) {}
 

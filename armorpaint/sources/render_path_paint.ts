@@ -3,7 +3,6 @@ let render_path_paint_live_layer: slot_layer_t = null;
 let render_path_paint_live_layer_drawn: i32 = 0;
 let render_path_paint_live_layer_locked: bool = false;
 let render_path_paint_dilated: bool = true;
-let render_path_paint_init_voxels: bool = true; // Bake AO
 let render_path_paint_push_undo_last: bool;
 let render_path_paint_painto: mesh_object_t = null;
 let render_path_paint_planeo: mesh_object_t = null;
@@ -115,31 +114,6 @@ function render_path_paint_commands_paint(dilation: bool = true) {
 	let tid: i32 = context_raw.layer.id;
 
 	if (context_raw.pdirty > 0) {
-		///if arm_physics
-		let particle_physics: bool = context_raw.particle_physics;
-		///else
-		let particle_physics: bool = false;
-		///end
-		if (context_raw.tool == workspace_tool_t.PARTICLE && !particle_physics) {
-			render_path_set_target("texparticle");
-			render_path_clear_target(0x00000000);
-			render_path_bind_target("_main", "gbufferD");
-			if ((context_raw.xray || config_raw.brush_angle_reject) && config_raw.brush_3d) {
-				render_path_bind_target("gbuffer0", "gbuffer0");
-			}
-
-			let mo: mesh_object_t = scene_get_child(".ParticleEmitter").ext;
-			mo.base.visible = true;
-			mesh_object_render(mo, "mesh",_render_path_bind_params);
-			mo.base.visible = false;
-
-			mo = scene_get_child(".Particle").ext;
-			mo.base.visible = true;
-			mesh_object_render(mo, "mesh",_render_path_bind_params);
-			mo.base.visible = false;
-			render_path_end();
-		}
-
 		///if is_sculpt
 		render_path_sculpt_commands();
 		return;
@@ -253,23 +227,6 @@ function render_path_paint_commands_paint(dilation: bool = true) {
 			}
 		}
 		else {
-			///if arm_voxels
-			if (context_raw.tool == workspace_tool_t.BAKE && context_raw.bake_type == bake_type_t.AO) {
-				if (render_path_paint_init_voxels) {
-					render_path_paint_init_voxels = false;
-					let _rp_gi: bool = config_raw.rp_gi;
-					config_raw.rp_gi = true;
-					render_path_base_init_voxels();
-					config_raw.rp_gi = _rp_gi;
-				}
-				render_path_clear_image("voxels", 0x00000000);
-				render_path_set_target("");
-				render_path_set_viewport(256, 256);
-				render_path_bind_target("voxels", "voxels");
-				render_path_draw_meshes("voxel");
-				render_path_gen_mipmaps("voxels");
-			}
-			///end
 
 			let texpaint: string = "texpaint" + tid;
 			if (context_raw.tool == workspace_tool_t.BAKE && context_raw.brush_time == time_delta()) {
@@ -303,11 +260,6 @@ function render_path_paint_commands_paint(dilation: bool = true) {
 				render_path_bind_target("gbuffer0", "gbuffer0");
 			}
 			render_path_bind_target("texpaint_blend1", "paintmask");
-			///if arm_voxels
-			if (context_raw.tool == workspace_tool_t.BAKE && context_raw.bake_type == bake_type_t.AO) {
-				render_path_bind_target("voxels", "voxels");
-			}
-			///end
 			if (context_raw.colorid_picked) {
 				render_path_bind_target("texpaint_colorid", "texpaint_colorid");
 			}
@@ -656,14 +608,12 @@ function _render_path_paint_deriv() {
 	app_notify_on_init(_render_path_paint_final);
 }
 
-///if (arm_direct3d12 || arm_vulkan || arm_metal)
 function render_path_paint_is_rt_bake(): bool {
 	return (context_raw.bake_type == bake_type_t.AO  ||
 		context_raw.bake_type == bake_type_t.LIGHTMAP ||
 		context_raw.bake_type == bake_type_t.BENT_NORMAL ||
 		context_raw.bake_type == bake_type_t.THICKNESS);
 }
-///end
 
 function render_path_paint_update_bake_layer(bits: texture_bits_t) {
 	// Use RGBA128 texture format for high poly to low poly baking to prevent artifacts
@@ -749,7 +699,6 @@ function render_path_paint_draw() {
 				context_select_paint_object(_paint_object);
 				if (is_merged) context_raw.merged_object.base.visible = _visible;
 			}
-			///if (arm_direct3d12 || arm_vulkan || arm_metal)
 			else if (render_path_paint_is_rt_bake()) {
 				let dirty: bool = render_path_raytrace_bake_commands(make_material_parse_paint_material);
 				if (dirty) ui_header_handle.redraws = 2;
@@ -757,7 +706,6 @@ function render_path_paint_draw() {
 					render_path_paint_dilate(true, false);
 				}
 			}
-			///end
 			else {
 				render_path_paint_commands_paint();
 			}

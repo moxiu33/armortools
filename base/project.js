@@ -8,7 +8,6 @@ flags.metal = os_argv().indexOf("metal") >= 0;
 flags.raytrace = flags.d3d12 || flags.vulkan || flags.metal;
 flags.embed = os_argv().indexOf("--embed") >= 0; // os_argv().indexOf("--debug") == -1; // clang 19
 flags.physics = os_argv().indexOf("--debug") == -1;
-flags.voxels = !flags.raytrace && !flags.android && !flags.ios;
 
 flags.with_d3dcompiler = true;
 flags.with_nfd = true;
@@ -18,13 +17,12 @@ flags.with_iron = true;
 flags.with_eval = true;
 
 let project = new Project("Base");
+let dir = flags.name.toLowerCase();
 
 {
 	project.add_define("IDLE_SLEEP");
-	let dir = flags.name.toLowerCase();
 
 	if (graphics === "vulkan") {
-		project.add_define("KINC_VKRT");
 		project.add_project("../armorcore/tools/to_spirv");
 	}
 
@@ -68,6 +66,10 @@ project.add_assets("assets/licenses/**", { destination: "data/licenses/{name}" }
 project.add_assets("assets/plugins/*", { destination: "data/plugins/{name}" });
 project.add_assets("assets/themes/*.json", { destination: "data/themes/{name}" });
 
+if (platform === "linux" && fs_exists(os_cwd() + "/icon.png")) {
+	project.add_assets("../" + dir + "/icon.png", { destination: "{name}", noprocessing: true });
+}
+
 if (flags.embed) {
 	project.add_define("WITH_EMBED");
 	project.add_define("arm_embed");
@@ -80,7 +82,6 @@ if (flags.physics) {
 	project.add_define("arm_physics");
 }
 
-project.add_define("arm_particles");
 // project.add_define("arm_skin");
 // project.add_define("arm_audio");
 
@@ -93,25 +94,12 @@ if (flags.raytrace) {
 
 	if (flags.d3d12) {
 		project.add_assets("shaders/raytrace/*.cso", { destination: "data/{name}" });
-		project.add_assets("assets/readme/readme_dxr.txt", { destination: "{name}" });
 	}
 	else if (flags.vulkan) {
 		project.add_assets("shaders/raytrace/*.spirv", { destination: "data/{name}" });
-		project.add_assets("assets/readme/readme_vkrt.txt", { destination: "{name}" });
 	}
 	else if (flags.metal) {
 		project.add_assets("shaders/raytrace/*.metal", { destination: "data/{name}" });
-	}
-}
-
-if (flags.voxels) {
-	project.add_define("arm_voxels");
-
-	if (platform === "windows") {
-		project.add_assets("shaders/voxel_hlsl/*.d3d11", { destination: "data/{name}" });
-	}
-	else {
-		project.add_shaders("shaders/voxel_glsl/*.glsl", { noprocessing: true });
 	}
 }
 

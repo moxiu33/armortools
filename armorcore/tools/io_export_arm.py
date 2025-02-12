@@ -73,14 +73,12 @@ class ArmoryExporter(bpy.types.Operator, ExportHelper):
         for o in self.meshArray.items():
             self.export_mesh(o)
 
-        self.output["light_datas"] = None
         self.output["camera_datas"] = None
         self.output["camera_ref"] = None
         self.output["material_datas"] = None
         self.output["shader_datas"] = None
         self.output["world_datas"] = None
         self.output["world_ref"] = None
-        self.output["particle_datas"] = None
         self.output["speaker_datas"] = None
         self.output["embedded_datas"] = None
 
@@ -240,7 +238,6 @@ class ArmoryExporter(bpy.types.Operator, ExportHelper):
             o["dimensions"] = None
             o["visible"] = True
             o["spawn"] = True
-            o["particles"] = None
             o["anim"] = None
             o["material_refs"] = None
             o["children"] = None
@@ -530,7 +527,6 @@ class ArmoryExporter(bpy.types.Operator, ExportHelper):
         if has_col:
             cdata = np.empty(num_verts * 4, dtype="<f4")
 
-        o["instancing"] = None
         o["skin"] = None
 
         scale_pos = o["scale_pos"]

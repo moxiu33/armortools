@@ -112,37 +112,7 @@ function make_material_parse_mesh_material() {
 
 	context_raw.ddirty = 2;
 
-	///if arm_voxels
-	make_material_make_voxel(m);
-	///end
-
-	///if (arm_direct3d12 || arm_vulkan || arm_metal)
 	render_path_raytrace_dirty = 1;
-	///end
-}
-
-function make_material_parse_particle_material() {
-	let m: material_data_t = context_raw.particle_material;
-	let sc: shader_context_t = null;
-	for (let i: i32 = 0; i < m._.shader._.contexts.length; ++i) {
-		let c: shader_context_t = m._.shader._.contexts[i];
-		if (c.name == "mesh") {
-			sc = c;
-			break;
-		}
-	}
-	if (sc != null) {
-		array_remove(m._.shader.contexts, sc);
-		array_remove(m._.shader._.contexts, sc);
-	}
-	let mm: material_t = { name: "MaterialParticle", canvas: null };
-	let con: node_shader_context_t = make_particle_run(mm);
-	if (sc != null) {
-		make_material_delete_context(sc);
-	}
-	sc = shader_context_create(con.data);
-	array_push(m._.shader.contexts, sc);
-	array_push(m._.shader._.contexts, sc);
 }
 
 function make_material_parse_mesh_preview_material(md: material_data_t = null) {
@@ -198,25 +168,6 @@ function make_material_parse_mesh_preview_material(md: material_data_t = null) {
 	array_push(m._.shader.contexts, scon);
 	array_push(m._.shader._.contexts, scon);
 }
-
-///if arm_voxels
-function make_material_make_voxel(m: material_data_t) {
-	let rebuild: bool = make_material_height_used;
-	if (config_raw.rp_gi != false && rebuild) {
-		let scon: shader_context_t = null;
-		for (let i: i32 = 0; i < m._.shader._.contexts.length; ++i) {
-			let c: shader_context_t = m._.shader._.contexts[i];
-			if (c.name == "voxel") {
-				scon = c;
-				break;
-			}
-		}
-		if (scon != null) {
-			make_voxel_run(scon);
-		}
-	}
-}
-///end
 
 function make_material_parse_paint_material(bake_previews: bool = true) {
 	if (!make_material_get_mout()) {
@@ -578,11 +529,6 @@ function make_material_blend_mode_mask(frag: node_shader_t, blending: i32, cola:
 function make_material_get_displace_strength(): f32 {
 	let sc: vec4_t = context_main_object().base.transform.scale;
 	return config_raw.displace_strength * 0.02 * sc.x;
-}
-
-function make_material_voxelgi_half_extents(): string {
-	let ext: f32 = context_raw.vxao_ext;
-	return "const vec3 voxelgi_half_extents = vec3(" + ext + ", " + ext + ", " + ext + ");";
 }
 
 function make_material_delete_context(c: shader_context_t) {

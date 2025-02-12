@@ -1,12 +1,10 @@
 #import "KoreAppDelegate.h"
-
 #include <kinc/graphics4/graphics.h>
 #include <kinc/input/gamepad.h>
 #include <kinc/input/keyboard.h>
 #include <kinc/system.h>
 #include <kinc/video.h>
 #include <kinc/window.h>
-
 #import <AudioToolbox/AudioToolbox.h>
 #import <UIKit/UIKit.h>
 
@@ -55,11 +53,6 @@ void kinc_load_url(const char *url) {
 	loadURL(url);
 }
 
-// On iOS you can't set the length of the vibration.
-void kinc_vibrate(int ms) {
-	AudioServicesPlaySystemSound(kSystemSoundID_Vibrate);
-};
-
 static char language[3];
 
 const char *kinc_language(void) {
@@ -71,7 +64,6 @@ const char *kinc_language(void) {
 	return language;
 }
 
-// called on rotation event
 void KoreUpdateKeyboard(void) {
 	if (keyboardshown) {
 		hideKeyboard();
@@ -96,7 +88,7 @@ int kinc_init(const char *name, int width, int height, struct kinc_window_option
 		frame = &defaultFrame;
 	}
 	kinc_g4_internal_init();
-	kinc_g4_internal_init_window(0, frame->depth_bits, frame->stencil_bits, true);
+	kinc_g4_internal_init_window(0, frame->depth_bits, true);
 
 	return 0;
 }
@@ -155,10 +147,6 @@ kinc_ticks_t kinc_timestamp(void) {
 	kinc_ticks_t time = mach_absolute_time();
 	return time;
 }
-
-void kinc_login(void) {}
-
-void kinc_unlock_achievement(int id) {}
 
 const char *kinc_gamepad_vendor(int gamepad) {
 	return "nobody";

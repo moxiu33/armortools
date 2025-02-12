@@ -13,10 +13,6 @@ function shader_data_create(raw: shader_data_t): shader_data_t {
 function shader_data_ext(): string {
 	///if arm_vulkan
 	return ".spirv";
-	///elseif (arm_android || arm_wasm)
-	return ".essl";
-	///elseif arm_opengl
-	return ".glsl";
 	///elseif arm_metal
 	return ".metal";
 	///else
@@ -65,11 +61,6 @@ function shader_data_get_context(raw: shader_data_t, name: string): shader_conte
 
 function shader_context_create(raw: shader_context_t): shader_context_t {
 	raw._ = {};
-	///if (!arm_voxels)
-	if (raw.name == "voxel") {
-		return raw;
-	}
-	///end
 	shader_context_parse_vertex_struct(raw);
 	return shader_context_compile(raw);
 }
@@ -82,21 +73,7 @@ function shader_context_compile(raw: shader_context_t): shader_context_t {
 	raw._.constants = [];
 	raw._.tex_units = [];
 
-	if (raw._.instancing_type > 0) { // Instancing
-		let inst_struct: vertex_struct_t = g4_vertex_struct_create();
-		g4_vertex_struct_add(inst_struct, "ipos", vertex_data_t.F32_3X);
-		if (raw._.instancing_type == 2 || raw._.instancing_type == 4) {
-			g4_vertex_struct_add(inst_struct, "irot", vertex_data_t.F32_3X);
-		}
-		if (raw._.instancing_type == 3 || raw._.instancing_type == 4) {
-			g4_vertex_struct_add(inst_struct, "iscl", vertex_data_t.F32_3X);
-		}
-		inst_struct.instanced = true;
-		raw._.pipe_state.input_layout = [raw._.structure, inst_struct];
-	}
-	else { // Regular
-		raw._.pipe_state.input_layout = [raw._.structure];
-	}
+	raw._.pipe_state.input_layout = raw._.structure;
 
 	// Depth
 	raw._.pipe_state.depth_write = raw.depth_write;
@@ -168,9 +145,6 @@ function shader_context_compile(raw: shader_context_t): shader_context_t {
 		///if arm_embed
 		raw._.pipe_state.fragment_shader = sys_get_shader(raw.fragment_shader);
 		raw._.pipe_state.vertex_shader = sys_get_shader(raw.vertex_shader);
-		if (raw.geometry_shader != null) {
-			raw._.pipe_state.geometry_shader = sys_get_shader(raw.geometry_shader);
-		}
 
 		///else // Load shaders manually
 
@@ -178,10 +152,6 @@ function shader_context_compile(raw: shader_context_t): shader_context_t {
 		raw._.pipe_state.vertex_shader = g4_shader_create(vs_buffer, shader_type_t.VERTEX);
 		let fs_buffer: buffer_t = data_get_blob(raw.fragment_shader + shader_data_ext());
 		raw._.pipe_state.fragment_shader = g4_shader_create(fs_buffer, shader_type_t.FRAGMENT);
-		if (raw.geometry_shader != null) {
-			let gs_buffer: buffer_t = data_get_blob(raw.geometry_shader + shader_data_ext());
-			raw._.pipe_state.geometry_shader = g4_shader_create(gs_buffer, shader_type_t.GEOMETRY);
-		}
 		///end
 	}
 
@@ -232,36 +202,10 @@ function shader_context_parse_data(data: string): vertex_data_t {
 
 function shader_context_parse_vertex_struct(raw: shader_context_t) {
 	raw._.structure = g4_vertex_struct_create();
-	let ipos: bool = false;
-	let irot: bool = false;
-	let iscl: bool = false;
+
 	for (let i: i32 = 0; i < raw.vertex_elements.length; ++i) {
 		let elem: vertex_element_t = raw.vertex_elements[i];
-		if (elem.name == "ipos") {
-			ipos = true;
-			continue;
-		}
-		if (elem.name == "irot") {
-			irot = true;
-			continue;
-		}
-		if (elem.name == "iscl") {
-			iscl = true;
-			continue;
-		}
 		g4_vertex_struct_add(raw._.structure, elem.name, shader_context_parse_data(elem.data));
-	}
-	if (ipos && !irot && !iscl) {
-		raw._.instancing_type = 1;
-	}
-	else if (ipos && irot && !iscl) {
-		raw._.instancing_type = 2;
-	}
-	else if (ipos && !irot && iscl) {
-		raw._.instancing_type = 3;
-	}
-	else if (ipos && irot && iscl) {
-		raw._.instancing_type = 4;
 	}
 }
 
@@ -271,9 +215,6 @@ function shader_context_delete(raw: shader_context_t) {
 	}
 	if (raw._.pipe_state.vertex_shader != null) {
 		g4_shader_delete(raw._.pipe_state.vertex_shader);
-	}
-	if (raw._.pipe_state.geometry_shader != null) {
-		g4_shader_delete(raw._.pipe_state.geometry_shader);
 	}
 	g4_pipeline_delete(raw._.pipe_state);
 }

@@ -79,11 +79,7 @@ function g4_pipeline_delete(raw: pipeline_t) {
 }
 
 function g4_pipeline_compile(raw: pipeline_t) {
-	let structure0: vertex_struct_t = raw.input_layout.length > 0 ? raw.input_layout[0] : null;
-	let structure1: vertex_struct_t = raw.input_layout.length > 1 ? raw.input_layout[1] : null;
-	let structure2: vertex_struct_t = raw.input_layout.length > 2 ? raw.input_layout[2] : null;
-	let structure3: vertex_struct_t = raw.input_layout.length > 3 ? raw.input_layout[3] : null;
-	let gs: any = raw.geometry_shader != null ? raw.geometry_shader.shader_ : null;
+	let structure0: vertex_struct_t = raw.input_layout;
 
 	for (let i: i32 = raw.color_write_masks_red.length; i < 8; ++i) {
 		array_push(raw.color_write_masks_red, true);
@@ -114,7 +110,7 @@ function g4_pipeline_compile(raw: pipeline_t) {
 	state.color_attachments = raw.color_attachments;
 	state.depth_attachment_bits = g4_pipeline_get_depth_buffer_bits(raw.depth_attachment);
 
-	iron_g4_compile_pipeline(raw.pipeline_, structure0, structure1, structure2, structure3, raw.input_layout.length, raw.vertex_shader.shader_, raw.fragment_shader.shader_, gs, state);
+	iron_g4_compile_pipeline(raw.pipeline_, structure0, raw.vertex_shader.shader_, raw.fragment_shader.shader_, state);
 }
 
 function g4_pipeline_set(raw: pipeline_t) {
@@ -129,10 +125,10 @@ function g4_pipeline_get_tex_unit(raw: pipeline_t, name: string): kinc_tex_unit_
 	return iron_g4_get_texture_unit(raw.pipeline_, name);
 }
 
-function g4_vertex_buffer_create(vertex_count: i32, structure: vertex_struct_t, usage: usage_t, inst_data_step_rate: i32 = 0): vertex_buffer_t {
+function g4_vertex_buffer_create(vertex_count: i32, structure: vertex_struct_t, usage: usage_t): vertex_buffer_t {
 	let raw: vertex_buffer_t = {};
 	raw.vertex_count = vertex_count;
-	raw.buffer_ = iron_g4_create_vertex_buffer(vertex_count, structure.elements, usage, inst_data_step_rate);
+	raw.buffer_ = iron_g4_create_vertex_buffer(vertex_count, structure.elements, usage);
 	return raw;
 }
 
@@ -155,7 +151,6 @@ function g4_vertex_buffer_set(raw: vertex_buffer_t) {
 function g4_vertex_struct_create(): vertex_struct_t {
 	let raw: vertex_struct_t = {};
 	raw.elements = [];
-	raw.instanced = false;
 	return raw;
 }
 
@@ -242,10 +237,6 @@ function g4_set_vertex_buffer(vb: vertex_buffer_t) {
 	g4_vertex_buffer_set(vb);
 }
 
-function g4_set_vertex_buffers(vbs: any_array_t[]) {
-	iron_g4_set_vertex_buffers(vbs);
-}
-
 function g4_set_index_buffer(ib: index_buffer_t) {
 	g4_index_buffer_set(ib);
 }
@@ -264,19 +255,8 @@ function g4_set_tex_depth(unit: kinc_tex_unit_t, tex: image_t) {
 	iron_g4_set_texture_depth(unit, tex.render_target_);
 }
 
-function g4_set_image_tex(unit: kinc_tex_unit_t, tex: image_t) {
-	if (tex == null) {
-		return;
-	}
-	iron_g4_set_image_texture(unit, tex.texture_);
-}
-
 function g4_set_tex_params(tex_unit: kinc_tex_unit_t, u_addressing: tex_addressing_t, v_addressing: tex_addressing_t, minification_filter: tex_filter_t, magnification_filter: tex_filter_t, mipmap_filter: mip_map_filter_t) {
 	iron_g4_set_texture_parameters(tex_unit, u_addressing, v_addressing, minification_filter, magnification_filter, mipmap_filter);
-}
-
-function g4_set_tex_3d_params(tex_unit: kinc_tex_unit_t, u_addressing: tex_addressing_t, v_addressing: tex_addressing_t, w_addressing: tex_addressing_t, minification_filter: tex_filter_t, magnification_filter: tex_filter_t, mipmap_filter: mip_map_filter_t) {
-	iron_g4_set_texture3d_parameters(tex_unit, u_addressing, v_addressing, w_addressing, minification_filter, magnification_filter, mipmap_filter);
 }
 
 function g4_set_pipeline(pipe: pipeline_t) {
@@ -337,10 +317,6 @@ function g4_set_mat3(loc: kinc_const_loc_t, mat: mat3_t) {
 
 function g4_draw(start: i32 = 0, count: i32 = -1) {
 	iron_g4_draw_indexed_vertices(start, count);
-}
-
-function g4_draw_inst(inst_count: i32, start: i32 = 0, count: i32 = -1) {
-	iron_g4_draw_indexed_vertices_instanced(inst_count, start, count);
 }
 
 function g4_scissor(x: i32, y: i32, width: i32, height: i32) {
@@ -417,15 +393,6 @@ function image_from_bytes(buffer: buffer_t, width: i32, height: i32, format: tex
 	return image;
 }
 
-function image_from_bytes_3d(buffer: buffer_t, width: i32, height: i32, depth: i32, format: tex_format_t = tex_format_t.RGBA32): image_t {
-	let readable: bool = true;
-	let image: image_t = _image_create(null);
-	image.format = format;
-	image.texture_ = iron_g4_create_texture_from_bytes3d(buffer, width, height, depth, image_get_tex_format(format), readable);
-	_image_set_size_from_texture(image, image.texture_);
-	return image;
-}
-
 function image_from_encoded_bytes(buffer: buffer_t, format: string, readable: bool = false): image_t {
 	let image: image_t = _image_create(null);
 	image.texture_ = iron_g4_create_texture_from_encoded_bytes(buffer, format, readable);
@@ -441,24 +408,12 @@ function image_create(width: i32, height: i32, format: tex_format_t = tex_format
 	return image;
 }
 
-function image_create_3d(width: i32, height: i32, depth: i32, format: tex_format_t = tex_format_t.RGBA32): image_t {
-	let image: image_t = _image_create(null);
-	image.format = format;
-	image.texture_ = iron_g4_create_texture3d(width, height, depth, image_get_tex_format(format));
-	_image_set_size_from_texture(image, image.texture_);
-	return image;
-}
-
 function image_create_render_target(width: i32, height: i32, format: tex_format_t = tex_format_t.RGBA32, depth_format: depth_format_t = depth_format_t.NO_DEPTH): image_t {
 	let image: image_t = _image_create(null);
 	image.format = format;
-	image.render_target_ = iron_g4_create_render_target(width, height, format, image_get_depth_buffer_bits(depth_format), 0);
+	image.render_target_ = iron_g4_create_render_target(width, height, format, image_get_depth_buffer_bits(depth_format));
 	_image_set_size_from_render_target(image, image.render_target_);
 	return image;
-}
-
-function image_render_targets_inv_y(): bool {
-	return iron_g4_render_targets_inverted_y();
 }
 
 function image_format_byte_size(format: tex_format_t): i32 {
@@ -528,10 +483,6 @@ function image_set_depth_from(raw: image_t, image: image_t) {
 	iron_g4_set_depth_from(raw.render_target_, image.render_target_);
 }
 
-function image_clear(raw: image_t, x: i32, y: i32, z: i32, width: i32, height: i32, depth: i32, color: color_t) {
-	iron_g4_clear_texture(raw.texture_, x, y, z, width, height, depth, color);
-}
-
 declare type image_t = {
 	texture_?: any;
 	render_target_?: any;
@@ -540,15 +491,13 @@ declare type image_t = {
 	pixels?: buffer_t;
 	width?: i32;
 	height?: i32;
-	depth?: i32;
 };
 
 type pipeline_t = {
 	pipeline_?: any;
-	input_layout?: vertex_struct_t[];
+	input_layout?: vertex_struct_t;
 	vertex_shader?: shader_t;
 	fragment_shader?: shader_t;
-	geometry_shader?: shader_t;
 	cull_mode?: cull_mode_t;
 	depth_write?: bool;
 	depth_mode?: compare_mode_t;
@@ -576,7 +525,6 @@ type vertex_buffer_t = {
 
 declare type vertex_struct_t = {
 	elements?: kinc_vertex_elem_t[];
-	instanced?: bool;
 };
 
 type index_buffer_t = {
@@ -702,5 +650,4 @@ enum cull_mode_t {
 enum shader_type_t {
 	FRAGMENT = 0,
 	VERTEX = 1,
-	GEOMETRY = 3,
 }

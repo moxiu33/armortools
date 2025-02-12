@@ -4,38 +4,10 @@
 #include <kinc/graphics5/pipeline.h>
 #include <kinc/graphics5/shader.h>
 #include <kinc/log.h>
-
-#include <kinc/backend/SystemMicrosoft.h>
+#include <kinc/backend/system_microsoft.h>
 
 void kinc_g5_internal_setConstants(kinc_g5_command_list_t *commandList, kinc_g5_pipeline_t *pipeline) {
-	/*if (currentProgram->vertexShader->constantsSize > 0) {
-	    context->UpdateSubresource(currentProgram->vertexConstantBuffer, 0, nullptr, vertexConstants, 0, 0);
-	    context->VSSetConstantBuffers(0, 1, &currentProgram->vertexConstantBuffer);
-	}
-	if (currentProgram->fragmentShader->constantsSize > 0) {
-	    context->UpdateSubresource(currentProgram->fragmentConstantBuffer, 0, nullptr, fragmentConstants, 0, 0);
-	    context->PSSetConstantBuffers(0, 1, &currentProgram->fragmentConstantBuffer);
-	}
-	if (currentProgram->geometryShader != nullptr && currentProgram->geometryShader->constantsSize > 0) {
-	    context->UpdateSubresource(currentProgram->geometryConstantBuffer, 0, nullptr, geometryConstants, 0, 0);
-	    context->GSSetConstantBuffers(0, 1, &currentProgram->geometryConstantBuffer);
-	}
-	if (currentProgram->tessControlShader != nullptr && currentProgram->tessControlShader->constantsSize > 0) {
-	    context->UpdateSubresource(currentProgram->tessControlConstantBuffer, 0, nullptr, tessControlConstants, 0, 0);
-	    context->HSSetConstantBuffers(0, 1, &currentProgram->tessControlConstantBuffer);
-	}
-	if (currentProgram->tessEvalShader != nullptr && currentProgram->tessEvalShader->constantsSize > 0) {
-	    context->UpdateSubresource(currentProgram->tessEvalConstantBuffer, 0, nullptr, tessEvalConstants, 0, 0);
-	    context->DSSetConstantBuffers(0, 1, &currentProgram->tessEvalConstantBuffer);
-	}
-	*/
-
-#ifdef KINC_DXC
-	// commandList->SetGraphicsRootSignature(pipeline->impl.rootSignature);
-	commandList->impl._commandList->SetGraphicsRootSignature(globalRootSignature);
-#else
-	commandList->impl._commandList->SetGraphicsRootSignature(globalRootSignature);
-#endif
+	commandList->impl._commandList->lpVtbl->SetGraphicsRootSignature(commandList->impl._commandList, globalRootSignature);
 
 	if (pipeline->impl.textures > 0) {
 		kinc_g5_internal_set_textures(commandList);
@@ -43,29 +15,8 @@ void kinc_g5_internal_setConstants(kinc_g5_command_list_t *commandList, kinc_g5_
 }
 
 void kinc_g5_internal_set_compute_constants(kinc_g5_command_list_t *commandList) {
-	/*if (currentProgram->vertexShader->constantsSize > 0) {
-	    context->UpdateSubresource(currentProgram->vertexConstantBuffer, 0, nullptr, vertexConstants, 0, 0);
-	    context->VSSetConstantBuffers(0, 1, &currentProgram->vertexConstantBuffer);
-	}
-	if (currentProgram->fragmentShader->constantsSize > 0) {
-	    context->UpdateSubresource(currentProgram->fragmentConstantBuffer, 0, nullptr, fragmentConstants, 0, 0);
-	    context->PSSetConstantBuffers(0, 1, &currentProgram->fragmentConstantBuffer);
-	}
-	if (currentProgram->geometryShader != nullptr && currentProgram->geometryShader->constantsSize > 0) {
-	    context->UpdateSubresource(currentProgram->geometryConstantBuffer, 0, nullptr, geometryConstants, 0, 0);
-	    context->GSSetConstantBuffers(0, 1, &currentProgram->geometryConstantBuffer);
-	}
-	if (currentProgram->tessControlShader != nullptr && currentProgram->tessControlShader->constantsSize > 0) {
-	    context->UpdateSubresource(currentProgram->tessControlConstantBuffer, 0, nullptr, tessControlConstants, 0, 0);
-	    context->HSSetConstantBuffers(0, 1, &currentProgram->tessControlConstantBuffer);
-	}
-	if (currentProgram->tessEvalShader != nullptr && currentProgram->tessEvalShader->constantsSize > 0) {
-	    context->UpdateSubresource(currentProgram->tessEvalConstantBuffer, 0, nullptr, tessEvalConstants, 0, 0);
-	    context->DSSetConstantBuffers(0, 1, &currentProgram->tessEvalConstantBuffer);
-	}
-	*/
 
-	commandList->impl._commandList->SetComputeRootSignature(globalComputeRootSignature);
+	commandList->impl._commandList->lpVtbl->SetComputeRootSignature(commandList->impl._commandList, globalComputeRootSignature);
 
 	//if (pipeline->impl.textures > 0) {
 		kinc_g5_internal_set_textures(commandList);
@@ -78,22 +29,10 @@ void kinc_g5_pipeline_init(kinc_g5_pipeline_t *pipe) {
 
 void kinc_g5_pipeline_destroy(kinc_g5_pipeline_t *pipe) {
 	if (pipe->impl.pso != NULL) {
-		pipe->impl.pso->Release();
+		pipe->impl.pso->lpVtbl->Release(pipe->impl.pso);
 		pipe->impl.pso = NULL;
 	}
 }
-
-// void PipelineState5Impl::set(Graphics5::PipelineState* pipeline) {
-//_current = this;
-// context->VSSetShader((ID3D11VertexShader*)vertexShader->shader, nullptr, 0);
-// context->PSSetShader((ID3D11PixelShader*)fragmentShader->shader, nullptr, 0);
-
-// if (geometryShader != nullptr) context->GSSetShader((ID3D11GeometryShader*)geometryShader->shader, nullptr, 0);
-// if (tessControlShader != nullptr) context->HSSetShader((ID3D11HullShader*)tessControlShader->shader, nullptr, 0);
-// if (tessEvalShader != nullptr) context->DSSetShader((ID3D11DomainShader*)tessEvalShader->shader, nullptr, 0);
-
-// context->IASetInputLayout(inputLayout);
-//}
 
 #define MAX_SHADER_THING 32
 
@@ -156,24 +95,6 @@ kinc_g5_constant_location_t kinc_g5_pipeline_get_constant_location(struct kinc_g
 
 	location.impl.computeOffset = 0;
 	location.impl.computeSize = 0;
-
-	{
-		ShaderConstant constant = findConstant(pipe->geometryShader, name);
-		location.impl.geometryOffset = constant.offset;
-		location.impl.geometrySize = constant.size;
-	}
-
-	{
-		ShaderConstant constant = findConstant(pipe->tessellationControlShader, name);
-		location.impl.tessControlOffset = constant.offset;
-		location.impl.tessControlSize = constant.size;
-	}
-
-	{
-		ShaderConstant constant = findConstant(pipe->tessellationEvaluationShader, name);
-		location.impl.tessEvalOffset = constant.offset;
-		location.impl.tessEvalSize = constant.size;
-	}
 
 	return location;
 }
@@ -293,11 +214,7 @@ static DXGI_FORMAT convert_format(kinc_g5_render_target_format_t format) {
 		return DXGI_FORMAT_R8_UNORM;
 	case KINC_G5_RENDER_TARGET_FORMAT_32BIT:
 	default:
-#ifdef KINC_WINDOWS
 		return DXGI_FORMAT_R8G8B8A8_UNORM;
-#else
-		return DXGI_FORMAT_B8G8R8A8_UNORM;
-#endif
 	}
 }
 
@@ -317,153 +234,134 @@ static void set_blend_state(D3D12_BLEND_DESC *blend_desc, kinc_g5_pipeline_t *pi
 }
 
 void kinc_g5_pipeline_compile(kinc_g5_pipeline_t *pipe) {
-	// TODO FLOAT4x4
-	int vertexAttributeCount = 0;
-	for (int i = 0; i < 16; ++i) {
-		if (pipe->inputLayout[i] == NULL) {
-			break;
-		}
-		vertexAttributeCount += pipe->inputLayout[i]->size;
-	}
+	int vertexAttributeCount = pipe->inputLayout->size;
+
 	D3D12_INPUT_ELEMENT_DESC *vertexDesc = (D3D12_INPUT_ELEMENT_DESC *)alloca(sizeof(D3D12_INPUT_ELEMENT_DESC) * vertexAttributeCount);
 	ZeroMemory(vertexDesc, sizeof(D3D12_INPUT_ELEMENT_DESC) * vertexAttributeCount);
-	int curAttr = 0;
-	for (int stream = 0; pipe->inputLayout[stream] != NULL; ++stream) {
-		for (int i = 0; i < pipe->inputLayout[stream]->size; ++i) {
-			vertexDesc[curAttr].SemanticName = "TEXCOORD";
-			vertexDesc[curAttr].SemanticIndex = findAttribute(pipe->vertexShader, pipe->inputLayout[stream]->elements[i].name).attribute;
-			vertexDesc[curAttr].InputSlot = stream;
-			vertexDesc[curAttr].AlignedByteOffset = (i == 0) ? 0 : D3D12_APPEND_ALIGNED_ELEMENT;
-			vertexDesc[curAttr].InputSlotClass =
-			    pipe->inputLayout[stream]->instanced ? D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA : D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
-			vertexDesc[curAttr].InstanceDataStepRate = pipe->inputLayout[stream]->instanced ? 1 : 0;
 
-			switch (pipe->inputLayout[stream]->elements[i].data) {
-			case KINC_G4_VERTEX_DATA_F32_1X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R32_FLOAT;
-				break;
-			case KINC_G4_VERTEX_DATA_F32_2X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R32G32_FLOAT;
-				break;
-			case KINC_G4_VERTEX_DATA_F32_3X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R32G32B32_FLOAT;
-				break;
-			case KINC_G4_VERTEX_DATA_F32_4X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-				break;
-			case KINC_G4_VERTEX_DATA_I8_1X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R8_SINT;
-				break;
-			case KINC_G4_VERTEX_DATA_U8_1X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R8_UINT;
-				break;
-			case KINC_G4_VERTEX_DATA_I8_1X_NORMALIZED:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R8_SNORM;
-				break;
-			case KINC_G4_VERTEX_DATA_U8_1X_NORMALIZED:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R8_UNORM;
-				break;
-			case KINC_G4_VERTEX_DATA_I8_2X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R8G8_SINT;
-				break;
-			case KINC_G4_VERTEX_DATA_U8_2X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R8G8_UINT;
-				break;
-			case KINC_G4_VERTEX_DATA_I8_2X_NORMALIZED:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R8G8_SNORM;
-				break;
-			case KINC_G4_VERTEX_DATA_U8_2X_NORMALIZED:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R8G8_UNORM;
-				break;
-			case KINC_G4_VERTEX_DATA_I8_4X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R8G8B8A8_SINT;
-				break;
-			case KINC_G4_VERTEX_DATA_U8_4X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R8G8B8A8_UINT;
-				break;
-			case KINC_G4_VERTEX_DATA_I8_4X_NORMALIZED:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R8G8B8A8_SNORM;
-				break;
-			case KINC_G4_VERTEX_DATA_U8_4X_NORMALIZED:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-				break;
-			case KINC_G4_VERTEX_DATA_I16_1X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R16_SINT;
-				break;
-			case KINC_G4_VERTEX_DATA_U16_1X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R16_UINT;
-				break;
-			case KINC_G4_VERTEX_DATA_I16_1X_NORMALIZED:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R16_SNORM;
-				break;
-			case KINC_G4_VERTEX_DATA_U16_1X_NORMALIZED:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R16_UNORM;
-				break;
-			case KINC_G4_VERTEX_DATA_I16_2X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R16G16_SINT;
-				break;
-			case KINC_G4_VERTEX_DATA_U16_2X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R16G16_UINT;
-				break;
-			case KINC_G4_VERTEX_DATA_I16_2X_NORMALIZED:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R16G16_SNORM;
-				break;
-			case KINC_G4_VERTEX_DATA_U16_2X_NORMALIZED:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R16G16_UNORM;
-				break;
-			case KINC_G4_VERTEX_DATA_I16_4X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R16G16B16A16_SINT;
-				break;
-			case KINC_G4_VERTEX_DATA_U16_4X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R16G16B16A16_UINT;
-				break;
-			case KINC_G4_VERTEX_DATA_I16_4X_NORMALIZED:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R16G16B16A16_SNORM;
-				break;
-			case KINC_G4_VERTEX_DATA_U16_4X_NORMALIZED:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R16G16B16A16_UNORM;
-				break;
-			case KINC_G4_VERTEX_DATA_I32_1X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R32_SINT;
-				break;
-			case KINC_G4_VERTEX_DATA_U32_1X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R32_UINT;
-				break;
-			case KINC_G4_VERTEX_DATA_I32_2X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R32G32_SINT;
-				break;
-			case KINC_G4_VERTEX_DATA_U32_2X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R32G32_UINT;
-				break;
-			case KINC_G4_VERTEX_DATA_I32_3X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R32G32B32_SINT;
-				break;
-			case KINC_G4_VERTEX_DATA_U32_3X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R32G32B32_UINT;
-				break;
-			case KINC_G4_VERTEX_DATA_I32_4X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R32G32B32A32_SINT;
-				break;
-			case KINC_G4_VERTEX_DATA_U32_4X:
-				vertexDesc[curAttr].Format = DXGI_FORMAT_R32G32B32A32_UINT;
-				break;
-			default:
-				break;
-			}
-			curAttr++;
+	for (int i = 0; i < pipe->inputLayout->size; ++i) {
+		vertexDesc[i].SemanticName = "TEXCOORD";
+		vertexDesc[i].SemanticIndex = findAttribute(pipe->vertexShader, pipe->inputLayout->elements[i].name).attribute;
+		vertexDesc[i].InputSlot = 0;
+		vertexDesc[i].AlignedByteOffset = (i == 0) ? 0 : D3D12_APPEND_ALIGNED_ELEMENT;
+		vertexDesc[i].InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+		vertexDesc[i].InstanceDataStepRate = 0;
+
+		switch (pipe->inputLayout->elements[i].data) {
+		case KINC_G4_VERTEX_DATA_F32_1X:
+			vertexDesc[i].Format = DXGI_FORMAT_R32_FLOAT;
+			break;
+		case KINC_G4_VERTEX_DATA_F32_2X:
+			vertexDesc[i].Format = DXGI_FORMAT_R32G32_FLOAT;
+			break;
+		case KINC_G4_VERTEX_DATA_F32_3X:
+			vertexDesc[i].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+			break;
+		case KINC_G4_VERTEX_DATA_F32_4X:
+			vertexDesc[i].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+			break;
+		case KINC_G4_VERTEX_DATA_I8_1X:
+			vertexDesc[i].Format = DXGI_FORMAT_R8_SINT;
+			break;
+		case KINC_G4_VERTEX_DATA_U8_1X:
+			vertexDesc[i].Format = DXGI_FORMAT_R8_UINT;
+			break;
+		case KINC_G4_VERTEX_DATA_I8_1X_NORMALIZED:
+			vertexDesc[i].Format = DXGI_FORMAT_R8_SNORM;
+			break;
+		case KINC_G4_VERTEX_DATA_U8_1X_NORMALIZED:
+			vertexDesc[i].Format = DXGI_FORMAT_R8_UNORM;
+			break;
+		case KINC_G4_VERTEX_DATA_I8_2X:
+			vertexDesc[i].Format = DXGI_FORMAT_R8G8_SINT;
+			break;
+		case KINC_G4_VERTEX_DATA_U8_2X:
+			vertexDesc[i].Format = DXGI_FORMAT_R8G8_UINT;
+			break;
+		case KINC_G4_VERTEX_DATA_I8_2X_NORMALIZED:
+			vertexDesc[i].Format = DXGI_FORMAT_R8G8_SNORM;
+			break;
+		case KINC_G4_VERTEX_DATA_U8_2X_NORMALIZED:
+			vertexDesc[i].Format = DXGI_FORMAT_R8G8_UNORM;
+			break;
+		case KINC_G4_VERTEX_DATA_I8_4X:
+			vertexDesc[i].Format = DXGI_FORMAT_R8G8B8A8_SINT;
+			break;
+		case KINC_G4_VERTEX_DATA_U8_4X:
+			vertexDesc[i].Format = DXGI_FORMAT_R8G8B8A8_UINT;
+			break;
+		case KINC_G4_VERTEX_DATA_I8_4X_NORMALIZED:
+			vertexDesc[i].Format = DXGI_FORMAT_R8G8B8A8_SNORM;
+			break;
+		case KINC_G4_VERTEX_DATA_U8_4X_NORMALIZED:
+			vertexDesc[i].Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			break;
+		case KINC_G4_VERTEX_DATA_I16_1X:
+			vertexDesc[i].Format = DXGI_FORMAT_R16_SINT;
+			break;
+		case KINC_G4_VERTEX_DATA_U16_1X:
+			vertexDesc[i].Format = DXGI_FORMAT_R16_UINT;
+			break;
+		case KINC_G4_VERTEX_DATA_I16_1X_NORMALIZED:
+			vertexDesc[i].Format = DXGI_FORMAT_R16_SNORM;
+			break;
+		case KINC_G4_VERTEX_DATA_U16_1X_NORMALIZED:
+			vertexDesc[i].Format = DXGI_FORMAT_R16_UNORM;
+			break;
+		case KINC_G4_VERTEX_DATA_I16_2X:
+			vertexDesc[i].Format = DXGI_FORMAT_R16G16_SINT;
+			break;
+		case KINC_G4_VERTEX_DATA_U16_2X:
+			vertexDesc[i].Format = DXGI_FORMAT_R16G16_UINT;
+			break;
+		case KINC_G4_VERTEX_DATA_I16_2X_NORMALIZED:
+			vertexDesc[i].Format = DXGI_FORMAT_R16G16_SNORM;
+			break;
+		case KINC_G4_VERTEX_DATA_U16_2X_NORMALIZED:
+			vertexDesc[i].Format = DXGI_FORMAT_R16G16_UNORM;
+			break;
+		case KINC_G4_VERTEX_DATA_I16_4X:
+			vertexDesc[i].Format = DXGI_FORMAT_R16G16B16A16_SINT;
+			break;
+		case KINC_G4_VERTEX_DATA_U16_4X:
+			vertexDesc[i].Format = DXGI_FORMAT_R16G16B16A16_UINT;
+			break;
+		case KINC_G4_VERTEX_DATA_I16_4X_NORMALIZED:
+			vertexDesc[i].Format = DXGI_FORMAT_R16G16B16A16_SNORM;
+			break;
+		case KINC_G4_VERTEX_DATA_U16_4X_NORMALIZED:
+			vertexDesc[i].Format = DXGI_FORMAT_R16G16B16A16_UNORM;
+			break;
+		case KINC_G4_VERTEX_DATA_I32_1X:
+			vertexDesc[i].Format = DXGI_FORMAT_R32_SINT;
+			break;
+		case KINC_G4_VERTEX_DATA_U32_1X:
+			vertexDesc[i].Format = DXGI_FORMAT_R32_UINT;
+			break;
+		case KINC_G4_VERTEX_DATA_I32_2X:
+			vertexDesc[i].Format = DXGI_FORMAT_R32G32_SINT;
+			break;
+		case KINC_G4_VERTEX_DATA_U32_2X:
+			vertexDesc[i].Format = DXGI_FORMAT_R32G32_UINT;
+			break;
+		case KINC_G4_VERTEX_DATA_I32_3X:
+			vertexDesc[i].Format = DXGI_FORMAT_R32G32B32_SINT;
+			break;
+		case KINC_G4_VERTEX_DATA_U32_3X:
+			vertexDesc[i].Format = DXGI_FORMAT_R32G32B32_UINT;
+			break;
+		case KINC_G4_VERTEX_DATA_I32_4X:
+			vertexDesc[i].Format = DXGI_FORMAT_R32G32B32A32_SINT;
+			break;
+		case KINC_G4_VERTEX_DATA_U32_4X:
+			vertexDesc[i].Format = DXGI_FORMAT_R32G32B32A32_UINT;
+			break;
+		default:
+			break;
 		}
 	}
 
 	HRESULT hr = S_OK;
-#ifdef KINC_DXC
-	// hr = device->CreateRootSignature(0, pipe->vertexShader->impl.data, pipe->vertexShader->impl.length, IID_GRAPHICS_PPV_ARGS(&pipe->impl.rootSignature));
-	if (hr != S_OK) {
-		kinc_log(KINC_LOG_LEVEL_WARNING, "Could not create root signature.");
-	}
-	pipe->impl.vertexConstantsSize = pipe->vertexShader->impl.constantsSize;
-	pipe->impl.fragmentConstantsSize = pipe->fragmentShader->impl.constantsSize;
-#endif
-
 	pipe->impl.textures = pipe->fragmentShader->impl.texturesCount;
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {0};
@@ -471,12 +369,7 @@ void kinc_g5_pipeline_compile(kinc_g5_pipeline_t *pipe) {
 	psoDesc.VS.pShaderBytecode = pipe->vertexShader->impl.data;
 	psoDesc.PS.BytecodeLength = pipe->fragmentShader->impl.length;
 	psoDesc.PS.pShaderBytecode = pipe->fragmentShader->impl.data;
-#ifdef KINC_DXC
-	// psoDesc.pRootSignature = pipe->impl.rootSignature;
 	psoDesc.pRootSignature = globalRootSignature;
-#else
-	psoDesc.pRootSignature = globalRootSignature;
-#endif
 	psoDesc.NumRenderTargets = pipe->colorAttachmentCount;
 	for (int i = 0; i < pipe->colorAttachmentCount; ++i) {
 		psoDesc.RTVFormats[i] = convert_format(pipe->colorAttachment[i]);
@@ -552,7 +445,7 @@ void kinc_g5_pipeline_compile(kinc_g5_pipeline_t *pipe) {
 	psoDesc.SampleMask = 0xFFFFFFFF;
 	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
-	hr = device->CreateGraphicsPipelineState(&psoDesc, IID_GRAPHICS_PPV_ARGS(&pipe->impl.pso));
+	hr = device->lpVtbl->CreateGraphicsPipelineState(device , &psoDesc, &IID_ID3D12PipelineState, &pipe->impl.pso);
 	if (hr != S_OK) {
 		kinc_log(KINC_LOG_LEVEL_WARNING, "Could not create pipeline.");
 	}
