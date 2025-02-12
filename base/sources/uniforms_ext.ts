@@ -264,7 +264,7 @@ function uniforms_ext_vec4_link(object: object_t, mat: material_data_t, link: st
 		return v;
 	}
 	else if (link == "_envmap_data") {
-		return vec4_create(context_raw.envmap_angle, math_sin(-context_raw.envmap_angle), math_cos(-context_raw.envmap_angle), scene_world.strength);
+		return vec4_create(context_raw.envmap_angle, math_sin(-context_raw.envmap_angle), math_cos(-context_raw.envmap_angle), scene_world.strength * 1.5);
 	}
 	else if (link == "_envmap_data_world") {
 		return vec4_create(context_raw.envmap_angle, math_sin(-context_raw.envmap_angle), math_cos(-context_raw.envmap_angle), context_raw.show_envmap ? scene_world.strength : 1.0);
@@ -328,18 +328,6 @@ function uniforms_ext_tex_link(object: object_t, mat: material_data_t, link: str
 		let i: i32 = history_undo_i - 1 < 0 ? config_raw.undo_steps - 1 : history_undo_i - 1;
 		let rt: render_target_t = map_get(render_path_render_targets, "texpaint_pack_undo" + i);
 		return rt._image;
-	}
-	else if (link == "_ltc_mat") {
-		if (const_data_ltc_mat_tex == null) {
-			const_data_init_ltc();
-		}
-		return const_data_ltc_mat_tex;
-	}
-	else if (link == "_ltc_mag") {
-		if (const_data_ltc_mag_tex == null) {
-			const_data_init_ltc();
-		}
-		return const_data_ltc_mag_tex;
 	}
 	else if (link == "_texcolorid") {
 		if (project_assets.length == 0) {
